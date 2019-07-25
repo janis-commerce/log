@@ -1,0 +1,40 @@
+{
+  "name": "@janiscommerce/log",
+  "version": "1.0.0",
+  "description": "A package for creating logs in S3",
+  "main": "index.js",
+  "scripts": {
+    "test": "export TEST_ENV=true; mocha --exit -R nyan --recursive tests/",
+    "test-ci": "nyc --reporter=html --reporter=text mocha --recursive tests/",
+    "watch-test": "export TEST_ENV=true; mocha --exit -R nyan -w --recursive tests/",
+    "coverage": "nyc npm test",
+    "lint": "eslint index.js lib/ tests/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/janis-commerce/log.git"
+  },
+  "author": "Janis",
+  "license": "ISC",
+  "homepage": "https://github.com/janis-commerce/log.git#readme",
+  "devDependencies": {
+    "aws-sdk-mock": "^4.5.0",
+    "eslint": "^5.16.0",
+    "eslint-config-airbnb-base": "^13.1.0",
+    "eslint-plugin-import": "^2.17.3",
+    "mocha": "^5.2.0",
+    "mock-require": "^3.0.3",
+    "nyc": "^13.1.0",
+    "sinon": "^7.3.2"
+  },
+  "files": [
+    "lib/"
+  ],
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.498.0",
+    "uuid": "^3.3.2"
+  }
+}
