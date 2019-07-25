@@ -1,7 +1,7 @@
 # log
 
-[![Build Status](https://travis-ci.org/janis-commerce/log.svg?branch=master)](https://travis-ci.org/janis-commerce/log)
-[![Coverage Status](https://coveralls.io/repos/github/janis-commerce/log/badge.svg?branch=master)](https://coveralls.io/github/janis-commerce/log?branch=master)
+[![Build Status](https://travis-ci.org/janis-commerce/log.svg?branch=JCN-112-log)](https://travis-ci.org/janis-commerce/log)
+[![Coverage Status](https://coveralls.io/repos/github/janis-commerce/log/badge.svg?branch=JCN-112-log)](https://coveralls.io/github/janis-commerce/log?branch=JCN-112-log)
 
 A package for creating logs in S3
 
