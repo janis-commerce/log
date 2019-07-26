@@ -15,6 +15,18 @@ npm install @janiscommerce/log
 Parameters: `log [Object]`, `bucketName [String]`  
 Puts the recieved log into the specified S3 bucket.
 
+## Errors
+
+The errors are informed with a `LogError`.  
+This object has a code that can be useful for a correct error handling.  
+The codes are the following:  
+
+| Code | Description                    |
+|------|--------------------------------|
+| 1    | Invalid log                    |
+| 2    | Empty bucket                   |
+| 3    | S3 Error                       |
+
 ## Usage
 ```js
 const Log = require('@janiscommerce/log');
@@ -26,4 +38,12 @@ Log.add({
 	message: '[GET] Request from 0.0.0.0 of custom_data'
 	// ...
 }, 'my-bucket');
+```
+
+## Notes
+In order to connect into the S3, this package uses ENV variables for getting the AWS access keys.
+
+```sh
+export AWS_ACCESS_KEY_ID='S3RVER'
+export AWS_SECRET_ACCESS_KEY='S3RVER'
 ```
