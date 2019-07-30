@@ -35,50 +35,80 @@ const fakeLog = {
 	id: 'a1d2asd1-1a23-a23d-as1d-0asdas2130'
 };
 
+const S3 = new AWSMock.S3({
+	accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+	secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+});
+
 describe('Log', () => {
 
 	beforeEach(() => {
 		AWSMock.S3.restore();
+		AWSMock.S3.clearBuckets();
 	});
 
-	it('should not reject when put a log into S3', async () => {
-		assert.doesNotThrow(() => { Log.add(fakeLog, 'someBucket'); });
+	it('should store a log into S3', async () => {
+
+		assert.doesNotThrow(() => Log.add('someBucket', fakeLog));
+
+		const log = await S3.getObject({
+			Bucket: 'someBucket',
+			Key: 'logs/2019/05/29/a1d2asd1-1a23-a23d-as1d-0asdas2130.json'
+		}).promise();
+
+		const savedLog = JSON.parse(log.Body.toString('utf-8'));
+
+		assert.deepStrictEqual(savedLog, fakeLog);
 	});
 
-	it('should not reject and generate the log id when put a log into S3 without id', async () => {
+	it('should not reject and generate the log id and date_created when put a log into S3 without id and date_created', async () => {
 
-		const fakeLogWithoutId = { ...fakeLog };
-		delete fakeLogWithoutId.id;
-		assert.doesNotThrow(() => { Log.add(fakeLogWithoutId, 'someBucket'); });
+		let newFakeLog = { ...fakeLog };
+		delete newFakeLog.id;
+		delete newFakeLog.date_created;
 
+		assert.doesNotThrow(() => Log.add('someBucket', newFakeLog));
+
+		const newFakeLogKey = Object.keys(AWSMock.S3.raw.someBucket)[0];
+		newFakeLog = JSON.parse(AWSMock.S3.raw.someBucket[newFakeLogKey].Body);
+
+		const log = await S3.getObject({
+			Bucket: 'someBucket',
+			Key: newFakeLogKey
+		}).promise();
+
+		const savedLog = JSON.parse(log.Body.toString('utf-8'));
+
+		assert.deepStrictEqual(savedLog, newFakeLog);
 	});
 
-	it('should throw LogError when S3 throws', async () => {
+	it('should throw LogError when S3 throws', () => {
 
 		AWSMock.S3.throws = true;
-		assert.throws(() => { Log.add({ id: 1 }, 'someBucket'); }, {
+
+		assert.throws(() => Log.add('someBucket', fakeLog), {
 			name: 'LogError',
 			code: LogError.codes.S3_ERROR
 		});
-
 	});
 
-	it('should throw LogError when the Log is invalid or is empty', async () => {
+	[true, 54, ['foo', 'bar'], null].forEach(log => {
 
-		assert.throws(() => { Log.add([], 'someBucket'); }, {
-			name: 'LogError',
-			code: LogError.codes.INVALID_LOG
+		it('should throw LogError when the log given is invalid', () => {
+			assert.throws(() => Log.add('someBucket', log), {
+				name: 'LogError',
+				code: LogError.codes.INVALID_LOG
+			});
 		});
-
 	});
 
-	it('should throw LogError when the bucket param is empty', async () => {
+	[null, ['bucket']].forEach(bucket => {
+		it('should throw LogError when the bucket given is invalid', () => {
 
-		assert.throws(() => { Log.add(fakeLog); }, {
-			name: 'LogError',
-			code: LogError.codes.EMPTY_BUCKET
+			assert.throws(() => Log.add(bucket, fakeLog), {
+				name: 'LogError',
+				code: LogError.codes.INVALID_BUCKET
+			});
 		});
-
 	});
-
 });
