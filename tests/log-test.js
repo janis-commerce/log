@@ -4,15 +4,17 @@ const assert = require('assert');
 
 const sandbox = require('sinon').createSandbox();
 
+const AWS = require('aws-sdk');
+
 const MockRequire = require('mock-require');
 
-const AWSMock = require('./../mocks/aws-s3-mock');
+MockRequire('aws-sdk', AWS);
 
-MockRequire('aws-sdk', AWSMock);
+const putObjectStub = sandbox.stub();
 
-process.env.AWS_ACCESS_KEY_ID = 'S3RVER';
-
-process.env.AWS_SECRET_ACCESS_KEY = 'S3RVER';
+sandbox.stub(AWS, 'S3').returns({
+	putObject: putObjectStub
+});
 
 const Log = require('./../index');
 
@@ -37,111 +39,99 @@ const fakeLog = {
 	id: 'a1d2asd1-1a23-a23d-as1d-0asdas2130'
 };
 
-const S3 = new AWSMock.S3({
-	accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-	secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-});
+const expectedParams = {
+	Bucket: 'someBucket',
+	Key: 'logs/2019/05/29/a1d2asd1-1a23-a23d-as1d-0asdas2130.json',
+	Body: JSON.stringify(fakeLog),
+	ContentType: 'application/json'
+};
 
 describe('Log', () => {
 
 	beforeEach(() => {
-		AWSMock.S3.restore();
-		AWSMock.S3.clearBuckets();
+		putObjectStub.returns({
+			promise: () => {}
+		});
 	});
 
-	it('should store a log into S3', async () => {
-
-		assert.doesNotThrow(() => Log.add('someBucket', fakeLog));
-
-		const log = await S3.getObject({
-			Bucket: 'someBucket',
-			Key: 'logs/2019/05/29/a1d2asd1-1a23-a23d-as1d-0asdas2130.json'
-		}).promise();
-
-		const savedLog = JSON.parse(log.Body.toString('utf-8'));
-
-		assert.deepStrictEqual(savedLog, fakeLog);
+	afterEach(() => {
+		putObjectStub.reset();
 	});
 
-	it('should not reject and generate the log id and date_created when put a log into S3 without id and date_created', async () => {
+	it('should call S3.putObject when try to put a log into S3', async () => {
 
-		let newFakeLog = { ...fakeLog };
+		await Log.add('someBucket', fakeLog);
+
+		sandbox.assert.calledWithExactly(putObjectStub, expectedParams);
+		sandbox.assert.calledOnce(putObjectStub);
+	});
+
+	it('should generate the log id and date_created when recieves a log without them', async () => {
+
+		const newFakeLog = { ...fakeLog };
 		delete newFakeLog.id;
 		delete newFakeLog.date_created;
 
-		assert.doesNotThrow(() => Log.add('someBucket', newFakeLog));
+		await Log.add('someBucket', newFakeLog);
 
-		const newFakeLogKey = Object.keys(AWSMock.S3.raw.someBucket)[0];
-		newFakeLog = JSON.parse(AWSMock.S3.raw.someBucket[newFakeLogKey].Body);
+		const createdLog = JSON.parse(putObjectStub.lastCall.args[0].Body);
 
-		const log = await S3.getObject({
-			Bucket: 'someBucket',
-			Key: newFakeLogKey
-		}).promise();
+		assert(createdLog.id && createdLog.date_created);
 
-		const savedLog = JSON.parse(log.Body.toString('utf-8'));
-
-		assert.deepStrictEqual(savedLog, newFakeLog);
+		sandbox.assert.calledOnce(putObjectStub);
 	});
 
 	it('should retry when the S3 operation fail', async () => {
 
-		const clock = sandbox.useFakeTimers();
+		putObjectStub.returns({
+			promise: async () => { throw new Error(); }
+		});
+		putObjectStub.onCall(1).returns({
+			promise: () => {}
+		});
 
-		AWSMock.S3.fail = true;
+		await Log.add('someBucket', fakeLog);
 
-		assert.doesNotThrow(() => Log.add('someBucket', fakeLog));
-
-		clock.tick(1500);
-
-		AWSMock.S3.fail = false;
-
-		clock.tick(500);
-
-		const log = await S3.getObject({
-			Bucket: 'someBucket',
-			Key: 'logs/2019/05/29/a1d2asd1-1a23-a23d-as1d-0asdas2130.json'
-		}).promise();
-
-		const savedLog = JSON.parse(log.Body.toString('utf-8'));
-
-		assert.deepStrictEqual(savedLog, fakeLog);
-
+		sandbox.assert.calledWithExactly(putObjectStub, expectedParams);
+		sandbox.assert.calledTwice(putObjectStub);
 	});
 
-	it('should throw when the S3 operation fails and max retries reached', () => {
+	it('should throw then the S3 operation fails and max retries reached', async () => {
 
-		const clock = sandbox.useFakeTimers();
+		putObjectStub.returns({
+			promise: async () => { throw new Error(); }
+		});
 
-		AWSMock.S3.fail = true;
-
-		assert.throws(() => {
-			Log.add('someBucket', fakeLog);
-			clock.tick(2500);
-		}, {
+		await assert.rejects(Log.add('someBucket', fakeLog), {
 			name: 'LogError',
 			code: LogError.codes.S3_ERROR
 		});
 
+		sandbox.assert.calledWithExactly(putObjectStub, expectedParams);
+		sandbox.assert.callCount(putObjectStub, 4);
 	});
 
-	[true, 54, ['foo', 'bar'], null].forEach(log => {
+	context('when the bucket or log recieved is invalid', () => {
 
-		it('should throw LogError when the log given is invalid', () => {
-			assert.throws(() => Log.add('someBucket', log), {
-				name: 'LogError',
-				code: LogError.codes.INVALID_LOG
+		[true, 54, ['foo', 'bar'], null].forEach(async log => {
+
+			it('should throw LogError when the log given is invalid', async () => {
+				await assert.rejects(Log.add('someBucket', log), {
+					name: 'LogError',
+					code: LogError.codes.INVALID_LOG
+				});
 			});
 		});
-	});
 
-	[null, ['bucket']].forEach(bucket => {
-		it('should throw LogError when the bucket given is invalid', () => {
+		[null, ['bucket']].forEach(async bucket => {
+			it('should throw LogError when the bucket given is invalid', async () => {
 
-			assert.throws(() => Log.add(bucket, fakeLog), {
-				name: 'LogError',
-				code: LogError.codes.INVALID_BUCKET
+				await assert.rejects(Log.add(bucket, fakeLog), {
+					name: 'LogError',
+					code: LogError.codes.INVALID_BUCKET
+				});
 			});
 		});
+
 	});
 });
