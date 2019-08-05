@@ -35,7 +35,7 @@ AWS.S3 = class {
 
 		try {
 			if(this.throws)
-				throw new Error();
+				throw new Error('Something not real was ocurred');
 
 			if(this.fail)
 				setTimeout(() => { callback(new Error('Request timeout')); }, this.timeout);
@@ -56,7 +56,7 @@ AWS.S3 = class {
 			}
 
 		} catch(err) {
-			callback(new Error('An imaginary S3 error'));
+			callback(new Error(`An imaginary S3 error: ${err.message}`));
 		}
 	}
 
@@ -89,7 +89,7 @@ AWS.S3 = class {
 				callback(null, this.buckets[obj.Bucket][obj.Key]);
 
 		} catch(err) {
-			callback(new Error('An imaginary S3 error'));
+			callback(new Error(`An imaginary S3 error: ${err.message}`));
 		}
 	}
 
