@@ -2,6 +2,8 @@
 
 const assert = require('assert');
 
+const sandbox = require('sinon').createSandbox();
+
 const MockRequire = require('mock-require');
 
 const AWSMock = require('./../mocks/aws-s3-mock');
@@ -82,14 +84,45 @@ describe('Log', () => {
 		assert.deepStrictEqual(savedLog, newFakeLog);
 	});
 
-	it('should throw LogError when S3 throws', () => {
+	it('should retry when the S3 operation fail', async () => {
 
-		AWSMock.S3.throws = true;
+		const clock = sandbox.useFakeTimers();
 
-		assert.throws(() => Log.add('someBucket', fakeLog), {
+		AWSMock.S3.fail = true;
+
+		assert.doesNotThrow(() => Log.add('someBucket', fakeLog));
+
+		clock.tick(1500);
+
+		AWSMock.S3.fail = false;
+
+		clock.tick(500);
+
+		const log = await S3.getObject({
+			Bucket: 'someBucket',
+			Key: 'logs/2019/05/29/a1d2asd1-1a23-a23d-as1d-0asdas2130.json'
+		}).promise();
+
+		const savedLog = JSON.parse(log.Body.toString('utf-8'));
+
+		assert.deepStrictEqual(savedLog, fakeLog);
+
+	});
+
+	it('should throw when the S3 operation fails and max retries reached', () => {
+
+		const clock = sandbox.useFakeTimers();
+
+		AWSMock.S3.fail = true;
+
+		assert.throws(() => {
+			Log.add('someBucket', fakeLog);
+			clock.tick(2500);
+		}, {
 			name: 'LogError',
 			code: LogError.codes.S3_ERROR
 		});
+
 	});
 
 	[true, 54, ['foo', 'bar'], null].forEach(log => {
