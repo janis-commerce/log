@@ -6,10 +6,6 @@ const sandbox = require('sinon').createSandbox();
 
 const AWS = require('aws-sdk');
 
-const MockRequire = require('mock-require');
-
-MockRequire('aws-sdk', AWS);
-
 const putObjectStub = sandbox.stub();
 
 sandbox.stub(AWS, 'S3').returns({
@@ -55,7 +51,11 @@ describe('Log', () => {
 	});
 
 	afterEach(() => {
-		putObjectStub.reset();
+		sandbox.reset();
+	});
+
+	after(() => {
+		sandbox.restore();
 	});
 
 	it('should call S3.putObject when try to put a log into S3', async () => {
@@ -96,42 +96,62 @@ describe('Log', () => {
 		sandbox.assert.calledTwice(putObjectStub);
 	});
 
-	it('should throw then the S3 operation fails and max retries reached', async () => {
+	it('should emit \'create-error\' event when the S3 operation fails and max retries reached', async () => {
+
+		let emitted = false;
+
+		Log.on('create-error', (log, err) => {
+			if(log === fakeLog && err.name === 'LogError' && err.code === LogError.codes.S3_ERROR)
+				emitted = true;
+		});
 
 		putObjectStub.returns({
 			promise: async () => { throw new Error(); }
 		});
 
-		await assert.rejects(Log.add('someBucket', fakeLog), {
-			name: 'LogError',
-			code: LogError.codes.S3_ERROR
-		});
+		await Log.add('someBucket', fakeLog);
 
 		sandbox.assert.calledWithExactly(putObjectStub, expectedParams);
-		sandbox.assert.callCount(putObjectStub, 4);
+		sandbox.assert.callCount(putObjectStub, 3);
+		assert(emitted);
 	});
 
 	context('when the bucket or log recieved is invalid', () => {
 
-		[true, 54, ['foo', 'bar'], null].forEach(async log => {
+		[true, 54, ['foo', 'bar'], null].forEach(async invalidLog => {
 
-			it('should throw LogError when the log given is invalid', async () => {
-				await assert.rejects(Log.add('someBucket', log), {
-					name: 'LogError',
-					code: LogError.codes.INVALID_LOG
+			it('should not call S3.putObject and emit \'create-error\' event when the log is invalid', async () => {
+
+				let emitted = false;
+
+				Log.on('create-error', (log, err) => {
+					if(err.name === 'LogError' && err.code === LogError.codes.INVALID_LOG)
+						emitted = true;
 				});
+
+				await Log.add('someBucket', invalidLog);
+
+				sandbox.assert.notCalled(putObjectStub);
+				assert(emitted);
 			});
 		});
 
 		[null, ['bucket']].forEach(async bucket => {
-			it('should throw LogError when the bucket given is invalid', async () => {
 
-				await assert.rejects(Log.add(bucket, fakeLog), {
-					name: 'LogError',
-					code: LogError.codes.INVALID_BUCKET
+			it('should not call S3.putObject and emit \'create-error\' event when the bucket is invalid', async () => {
+
+				let emitted = false;
+
+				Log.on('create-error', (log, err) => {
+					if(log === fakeLog && err.name === 'LogError' && err.code === LogError.codes.INVALID_BUCKET)
+						emitted = true;
 				});
+
+				await Log.add(bucket, fakeLog);
+
+				sandbox.assert.notCalled(putObjectStub);
+				assert(emitted);
 			});
 		});
-
 	});
 });
