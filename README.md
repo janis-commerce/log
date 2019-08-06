@@ -15,6 +15,10 @@ npm install @janiscommerce/log
 Parameters: `log [Object]`, `bucketName [String]`  
 Puts the recieved log into the specified S3 bucket.
 
+- `on(event, callback)`  
+Parameters: `event [String]`, `callback [Function]`
+Calls a callback when the specified event is emitted.
+
 ## Errors
 
 The errors are informed with a `LogError`.  
@@ -38,6 +42,10 @@ Log.add({
 	message: '[GET] Request from 0.0.0.0 of custom_data'
 	// ...
 }, 'my-bucket');
+
+Log.on('create-error', (log, err) => {
+	console.error(`An error occurred while creating the log ${err.message}`);
+});
 ```
 
 ## Notes
