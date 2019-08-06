@@ -41,9 +41,9 @@ Log.add({
 ```
 
 ## Notes
-In order to connect into the S3, this package uses ENV variables for getting the AWS access keys.
+In order to connect into S3, this package requires the aws volume in the `docker-compose.yml`.
 
-```sh
-export AWS_ACCESS_KEY_ID='S3RVER'
-export AWS_SECRET_ACCESS_KEY='S3RVER'
+```yml
+volumes:
+  ~/.aws:/root/.aws
 ```
