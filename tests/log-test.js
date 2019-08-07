@@ -98,7 +98,7 @@ describe('Log', () => {
 
 	it('should emit \'create-error\' event when the S3 operation fails and max retries reached', async () => {
 
-		let emitted = false;
+		let emitted;
 
 		Log.on('create-error', (log, err) => {
 			if(log === fakeLog && err.name === 'LogError' && err.code === LogError.codes.S3_ERROR)
@@ -122,7 +122,7 @@ describe('Log', () => {
 
 			it('should not call S3.putObject and emit \'create-error\' event when the log is invalid', async () => {
 
-				let emitted = false;
+				let emitted;
 
 				Log.on('create-error', (log, err) => {
 					if(err.name === 'LogError' && err.code === LogError.codes.INVALID_LOG)
@@ -140,7 +140,7 @@ describe('Log', () => {
 
 			it('should not call S3.putObject and emit \'create-error\' event when the bucket is invalid', async () => {
 
-				let emitted = false;
+				let emitted;
 
 				Log.on('create-error', (log, err) => {
 					if(log === fakeLog && err.name === 'LogError' && err.code === LogError.codes.INVALID_BUCKET)
