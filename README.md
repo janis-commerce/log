@@ -31,6 +31,8 @@ The codes are the following:
 | 2    | Invalid bucket                 |
 | 3    | S3 Error                       |
 
+In case of error while creating your log into S3, this package will emit an event called `create-error`, you can handle it using the `on()` method.
+
 ## Usage
 ```js
 const Log = require('@janiscommerce/log');
