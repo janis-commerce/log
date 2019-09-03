@@ -37,13 +37,13 @@ In case of error while creating your log into S3, this package will emit an even
 ```js
 const Log = require('@janiscommerce/log');
 
-Log.add({
+Log.add('my-bucket', {
 	type: 1,
 	entity: 'api',
 	entity_id: 'product',
 	message: '[GET] Request from 0.0.0.0 of custom_data'
 	// ...
-}, 'my-bucket');
+});
 
 Log.on('create-error', (log, err) => {
 	console.error(`An error occurred while creating the log ${err.message}`);
