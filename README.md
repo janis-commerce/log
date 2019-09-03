@@ -11,8 +11,8 @@ npm install @janiscommerce/log
 ```
 
 ## API
-- `add(log, bucketName)`  
-Parameters: `log [Object]`, `bucketName [String]`  
+- `add(bucketName, log)`  
+Parameters: `bucketName [String]`, `log [Object]`  
 Puts the recieved log into the specified S3 bucket.
 
 - `on(event, callback)`  
