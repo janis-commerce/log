@@ -10,6 +10,10 @@ A package for creating logs in S3
 npm install @janiscommerce/log
 ```
 
+## Configuration
+### ENV variables
+**`JANIS_SERVICE_NAME`** (required): The name of the service that will create the log.
+
 ## API
 - `add(bucketName, log)`  
 Parameters: `bucketName [String]`, `log [Object]`  
@@ -30,6 +34,7 @@ The codes are the following:
 | 1    | Invalid log                    |
 | 2    | Invalid bucket                 |
 | 3    | S3 Error                       |
+| 4    | Unknown service name           |
 
 In case of error while creating your log into S3, this package will emit an event called `create-error`, you can handle it using the `on()` method.
 
