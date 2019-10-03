@@ -38,19 +38,29 @@ const fakeLog = {
 const expectedParams = {
 	Bucket: 'someBucket',
 	Key: 'logs/2019/05/29/a1d2asd1-1a23-a23d-as1d-0asdas2130.json',
-	Body: JSON.stringify(fakeLog),
+	Body: JSON.stringify({ ...fakeLog, service: 'some-service' }),
 	ContentType: 'application/json'
+};
+
+const setEnvVars = () => {
+	process.env.JANIS_SERVICE_NAME = 'some-service';
+};
+
+const clearEnvVars = () => {
+	delete process.env.JANIS_SERVICE_NAME;
 };
 
 describe('Log', () => {
 
 	beforeEach(() => {
+		setEnvVars();
 		putObjectStub.returns({
 			promise: () => {}
 		});
 	});
 
 	afterEach(() => {
+		clearEnvVars();
 		sandbox.reset();
 	});
 
@@ -58,99 +68,152 @@ describe('Log', () => {
 		sandbox.restore();
 	});
 
-	it('should call S3.putObject when try to put a log into S3', async () => {
+	describe('_validateLog', () => {
 
-		await Log.add('someBucket', fakeLog);
-
-		sandbox.assert.calledWithExactly(putObjectStub, expectedParams);
-		sandbox.assert.calledOnce(putObjectStub);
-	});
-
-	it('should generate the log id and date_created when recieves a log without them', async () => {
-
-		const newFakeLog = { ...fakeLog };
-		delete newFakeLog.id;
-		delete newFakeLog.date_created;
-
-		await Log.add('someBucket', newFakeLog);
-
-		const createdLog = JSON.parse(putObjectStub.lastCall.args[0].Body);
-
-		assert(createdLog.id && createdLog.date_created);
-
-		sandbox.assert.calledOnce(putObjectStub);
-	});
-
-	it('should retry when the S3 operation fail', async () => {
-
-		putObjectStub.returns({
-			promise: async () => { throw new Error(); }
-		});
-		putObjectStub.onCall(1).returns({
-			promise: () => {}
+		it('should not throw when the received log it\'s correct', async () => {
+			assert.doesNotThrow(() => Log._validateLog(fakeLog));
 		});
 
-		await Log.add('someBucket', fakeLog);
+		['log', ['array']].forEach(log => {
 
-		sandbox.assert.calledWithExactly(putObjectStub, expectedParams);
-		sandbox.assert.calledTwice(putObjectStub);
-	});
+			it('should throw when the log is not an object or is an array', () => {
 
-	it('should emit \'create-error\' event when the S3 operation fails and max retries reached', async () => {
-
-		let emitted;
-
-		Log.on('create-error', (log, err) => {
-			if(log === fakeLog && err.name === 'LogError' && err.code === LogError.codes.S3_ERROR)
-				emitted = true;
-		});
-
-		putObjectStub.returns({
-			promise: async () => { throw new Error(); }
-		});
-
-		await Log.add('someBucket', fakeLog);
-
-		sandbox.assert.calledWithExactly(putObjectStub, expectedParams);
-		sandbox.assert.callCount(putObjectStub, 3);
-		assert(emitted);
-	});
-
-	context('when the bucket or log recieved is invalid', () => {
-
-		[true, 54, ['foo', 'bar'], null].forEach(async invalidLog => {
-
-			it('should not call S3.putObject and emit \'create-error\' event when the log is invalid', async () => {
-
-				let emitted;
-
-				Log.on('create-error', (log, err) => {
-					if(err.name === 'LogError' && err.code === LogError.codes.INVALID_LOG)
-						emitted = true;
+				assert.throws(() => Log._validateLog(log), {
+					name: 'LogError',
+					code: LogError.codes.INVALID_LOG
 				});
-
-				await Log.add('someBucket', invalidLog);
-
-				sandbox.assert.notCalled(putObjectStub);
-				assert(emitted);
 			});
 		});
 
-		[null, ['bucket']].forEach(async bucket => {
+		context('when the received log doesn\'t have the required fields', () => {
 
-			it('should not call S3.putObject and emit \'create-error\' event when the bucket is invalid', async () => {
-
-				let emitted;
-
-				Log.on('create-error', (log, err) => {
-					if(log === fakeLog && err.name === 'LogError' && err.code === LogError.codes.INVALID_BUCKET)
-						emitted = true;
+			it('should throw if log.entity not exists', async () => {
+				assert.throws(() => Log._validateLog({ type: 1 }), {
+					name: 'LogError',
+					code: LogError.codes.INVALID_LOG
 				});
+			});
 
-				await Log.add(bucket, fakeLog);
+			it('should throw if log.type not exists', async () => {
+				assert.throws(() => Log._validateLog({ entity: 'some-entity' }), {
+					name: 'LogError',
+					code: LogError.codes.INVALID_LOG
+				});
+			});
+		});
 
-				sandbox.assert.notCalled(putObjectStub);
-				assert(emitted);
+		context('when the received log fields have incorrect types', () => {
+
+			it('should throw if log.entity is not a string', async () => {
+				assert.throws(() => Log._validateLog({ entity: 1, type: 2 }), {
+					name: 'LogError',
+					code: LogError.codes.INVALID_LOG
+				});
+			});
+
+			it('should throw if log.type is not a string or a number', async () => {
+				assert.throws(() => Log._validateLog({ entity: 'some-entity', type: {} }), {
+					name: 'LogError',
+					code: LogError.codes.INVALID_LOG
+				});
+			});
+		});
+	});
+
+	describe('add()', () => {
+
+		it('should call S3.putObject when try to put a log into S3', async () => {
+
+			await Log.add('someBucket', fakeLog);
+
+			sandbox.assert.calledWithExactly(putObjectStub, expectedParams);
+			sandbox.assert.calledOnce(putObjectStub);
+		});
+
+		it('should generate the log id and date_created when recieves a log without them', async () => {
+
+			const newFakeLog = { ...fakeLog };
+			delete newFakeLog.id;
+			delete newFakeLog.date_created;
+
+			await Log.add('someBucket', newFakeLog);
+
+			const createdLog = JSON.parse(putObjectStub.lastCall.args[0].Body);
+
+			assert(createdLog.id && createdLog.date_created);
+
+			sandbox.assert.calledOnce(putObjectStub);
+		});
+
+		it('should retry when the S3 operation fail', async () => {
+
+			putObjectStub.returns({
+				promise: async () => { throw new Error(); }
+			});
+			putObjectStub.onCall(1).returns({
+				promise: () => {}
+			});
+
+			await Log.add('someBucket', fakeLog);
+
+			sandbox.assert.calledWithExactly(putObjectStub, expectedParams);
+			sandbox.assert.calledTwice(putObjectStub);
+		});
+
+		it('should emit \'create-error\' event when the S3 operation fails and max retries reached', async () => {
+
+			let emitted;
+
+			Log.on('create-error', (log, err) => {
+				if(log === fakeLog && err.name === 'LogError' && err.code === LogError.codes.S3_ERROR)
+					emitted = true;
+			});
+
+			putObjectStub.returns({
+				promise: async () => { throw new Error(); }
+			});
+
+			await Log.add('someBucket', fakeLog);
+
+			sandbox.assert.calledWithExactly(putObjectStub, expectedParams);
+			sandbox.assert.callCount(putObjectStub, 3);
+			assert(emitted);
+		});
+
+		it('should emit \'create-error\' event without calling S3.putObject when a LogError occurrs', async () => {
+
+			let emitted;
+
+			Log.on('create-error', (log, err) => {
+				if(err.name === 'LogError' && err.code === LogError.codes.INVALID_LOG)
+					emitted = true;
+			});
+
+			await Log.add('someBucket', { xd: 'lol' });
+
+			sandbox.assert.notCalled(putObjectStub);
+			assert(emitted);
+		});
+	});
+
+	describe('_add()', () => {
+
+		[null, ['bucket']].forEach(bucket => {
+
+			it('should reject when the bucket is invalid', async () => {
+
+				await assert.rejects(Log._add(bucket, fakeLog), {
+					name: 'LogError',
+					code: LogError.codes.INVALID_BUCKET
+				});
+			});
+
+			it('should reject when the service name env not exists', async () => {
+				clearEnvVars();
+				await assert.rejects(Log._add('some-bucket', fakeLog), {
+					name: 'LogError',
+					code: LogError.codes.NO_SERVICE_NAME
+				});
 			});
 		});
 	});
