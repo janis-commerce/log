@@ -12,8 +12,7 @@ sandbox.stub(AWS, 'S3').returns({
 	putObject: putObjectStub
 });
 
-const Log = require('./../index');
-
+const Log = require('./../lib/log');
 const LogError = require('./../lib/log-error');
 
 const fakeLog = {
