@@ -1,6 +1,6 @@
 {
   "name": "@janiscommerce/log",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "A package for creating logs in S3",
   "main": "lib/log.js",
   "scripts": {
