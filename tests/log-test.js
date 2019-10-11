@@ -35,31 +35,41 @@ const fakeLog = {
 };
 
 const expectedParams = {
-	Bucket: 'someBucket',
-	Key: 'logs/2019/05/29/a1d2asd1-1a23-a23d-as1d-0asdas2130.json',
+	Bucket: 'janis-trace-service-local',
+	Key: 'some-client/2019/05/29/a1d2asd1-1a23-a23d-as1d-0asdas2130.json',
 	Body: JSON.stringify({ ...fakeLog, service: 'some-service' }),
 	ContentType: 'application/json'
 };
 
-const setEnvVars = () => {
+const setServiceEnvVars = () => {
 	process.env.JANIS_SERVICE_NAME = 'some-service';
 };
 
-const clearEnvVars = () => {
+const clearServiceEnvVars = () => {
 	delete process.env.JANIS_SERVICE_NAME;
+};
+
+const setStageEnvVars = () => {
+	process.env.JANIS_ENV = 'local';
+};
+
+const clearStageEnvVars = () => {
+	delete process.env.JANIS_ENV;
 };
 
 describe('Log', () => {
 
 	beforeEach(() => {
-		setEnvVars();
+		setServiceEnvVars();
+		setStageEnvVars();
 		putObjectStub.returns({
 			promise: () => {}
 		});
 	});
 
 	afterEach(() => {
-		clearEnvVars();
+		clearServiceEnvVars();
+		clearStageEnvVars();
 		sandbox.reset();
 	});
 
@@ -123,7 +133,7 @@ describe('Log', () => {
 
 		it('should call S3.putObject when try to put a log into S3', async () => {
 
-			await Log.add('someBucket', fakeLog);
+			await Log.add('some-client', fakeLog);
 
 			sandbox.assert.calledWithExactly(putObjectStub, expectedParams);
 			sandbox.assert.calledOnce(putObjectStub);
@@ -135,7 +145,7 @@ describe('Log', () => {
 			delete newFakeLog.id;
 			delete newFakeLog.date_created;
 
-			await Log.add('someBucket', newFakeLog);
+			await Log.add('some-client', newFakeLog);
 
 			const createdLog = JSON.parse(putObjectStub.lastCall.args[0].Body);
 
@@ -153,7 +163,7 @@ describe('Log', () => {
 				promise: () => {}
 			});
 
-			await Log.add('someBucket', fakeLog);
+			await Log.add('some-client', fakeLog);
 
 			sandbox.assert.calledWithExactly(putObjectStub, expectedParams);
 			sandbox.assert.calledTwice(putObjectStub);
@@ -172,7 +182,7 @@ describe('Log', () => {
 				promise: async () => { throw new Error(); }
 			});
 
-			await Log.add('someBucket', fakeLog);
+			await Log.add('some-client', fakeLog);
 
 			sandbox.assert.calledWithExactly(putObjectStub, expectedParams);
 			sandbox.assert.callCount(putObjectStub, 3);
@@ -188,7 +198,7 @@ describe('Log', () => {
 					emitted = true;
 			});
 
-			await Log.add('someBucket', { xd: 'lol' });
+			await Log.add('some-client', { some: 'data' });
 
 			sandbox.assert.notCalled(putObjectStub);
 			assert(emitted);
@@ -197,21 +207,29 @@ describe('Log', () => {
 
 	describe('_add()', () => {
 
-		[null, ['bucket']].forEach(bucket => {
+		[null, ['client']].forEach(client => {
 
-			it('should reject when the bucket is invalid', async () => {
+			it('should reject when the client is invalid', async () => {
 
-				await assert.rejects(Log._add(bucket, fakeLog), {
+				await assert.rejects(Log._add(client, fakeLog), {
 					name: 'LogError',
-					code: LogError.codes.INVALID_BUCKET
+					code: LogError.codes.INVALID_CLIENT
 				});
 			});
 
 			it('should reject when the service name env not exists', async () => {
-				clearEnvVars();
-				await assert.rejects(Log._add('some-bucket', fakeLog), {
+				clearServiceEnvVars();
+				await assert.rejects(Log._add('some-client', fakeLog), {
 					name: 'LogError',
 					code: LogError.codes.NO_SERVICE_NAME
+				});
+			});
+
+			it('should reject when the stage name env for bucket not exists', async () => {
+				clearStageEnvVars();
+				await assert.rejects(Log._add('some-client', fakeLog), {
+					name: 'LogError',
+					code: LogError.codes.INVALID_BUCKET
 				});
 			});
 		});

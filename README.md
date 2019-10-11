@@ -12,12 +12,13 @@ npm install @janiscommerce/log
 
 ## Configuration
 ### ENV variables
-**`JANIS_SERVICE_NAME`** (required): The name of the service that will create the log.
+**`JANIS_SERVICE_NAME`** (required): The name of the service that will create the log.  
+**`JANIS_ENV`** (required): The name stage that will used as suffix for janis-trace-service bucket.
 
 ## API
-### **`add(bucketName, log)`**  
-Parameters: `bucketName [String]`, `log [Object]`  
-Puts the recieved log into the specified S3 bucket.
+### **`add(clientCode, log)`**  
+Parameters: `clientCode [String]`, `log [Object]`  
+Puts the recieved log into the janis-trace-service bucket using the `clientCode` as key prefix.
 
 ### Log structure
 The `log [Object]` parameter have the following structure:
@@ -42,8 +43,8 @@ The `log [Object]` parameter have the following structure:
     verb: 'GET',
     headers: {
       'x-forwarded-for': '12.345.67.89',
-      'x-forwarded-proto: 'https',
-      'x-forwarded-port: '443',
+      'x-forwarded-proto': 'https',
+      'x-forwarded-port': '443',
     },
     responseHttpCode: 200
   },
@@ -64,9 +65,10 @@ The codes are the following:
 | Code | Description                    |
 |------|--------------------------------|
 | 1    | Invalid log                    |
-| 2    | Invalid bucket                 |
-| 3    | S3 Error                       |
-| 4    | Unknown service name           |
+| 2    | Invalid client                 |
+| 3    | Invalid bucket                 |
+| 4    | S3 Error                       |
+| 5    | Unknown service name           |
 
 In case of error while creating your log into S3, this package will emit an event called `create-error`, you can handle it using the `on()` method.
 
@@ -74,7 +76,7 @@ In case of error while creating your log into S3, this package will emit an even
 ```js
 const Log = require('@janiscommerce/log');
 
-Log.add('my-bucket', {
+Log.add('some-client', {
 	type: 1,
 	entity: 'api',
 	entity_id: 'product',
