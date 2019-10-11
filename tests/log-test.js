@@ -57,6 +57,10 @@ const clearStageEnvVars = () => {
 	delete process.env.JANIS_ENV;
 };
 
+const clearCaches = () => {
+	delete Log._bucket; // eslint-disable-line
+};
+
 describe('Log', () => {
 
 	beforeEach(() => {
@@ -227,6 +231,7 @@ describe('Log', () => {
 
 			it('should reject when the stage name env for bucket not exists', async () => {
 				clearStageEnvVars();
+				clearCaches();
 				await assert.rejects(Log._add('some-client', fakeLog), {
 					name: 'LogError',
 					code: LogError.codes.NO_STAGE_NAME
