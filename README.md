@@ -66,9 +66,9 @@ The codes are the following:
 |------|--------------------------------|
 | 1    | Invalid log                    |
 | 2    | Invalid client                 |
-| 3    | Invalid bucket                 |
-| 4    | S3 Error                       |
-| 5    | Unknown service name           |
+| 3    | S3 Error                       |
+| 4    | Unknown service name           |
+| 5    | Unknown stage name             |
 
 In case of error while creating your log into S3, this package will emit an event called `create-error`, you can handle it using the `on()` method.
 

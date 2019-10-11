@@ -229,7 +229,7 @@ describe('Log', () => {
 				clearStageEnvVars();
 				await assert.rejects(Log._add('some-client', fakeLog), {
 					name: 'LogError',
-					code: LogError.codes.INVALID_BUCKET
+					code: LogError.codes.NO_STAGE_NAME
 				});
 			});
 		});
