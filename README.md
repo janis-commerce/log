@@ -22,6 +22,7 @@ Puts the recieved log into the janis-trace-service bucket using the `clientCode`
 
 ### Log structure
 The `log [Object]` parameter have the following structure:
+- **`service [String]`** (optional): The service name, if this field not exists, will be obtained from the ENV (**`JANIS_SERVICE_NAME`**)
 - **`type [String|Number]`** (required): The log type
 - **`entity [String]`** (required): The name of the entity that is creating the log
 - **`entity_id [String]`** (optional): The ID of the entity that is creating the log

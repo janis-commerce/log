@@ -36,7 +36,7 @@ const fakeLog = {
 
 const expectedParams = {
 	Bucket: 'janis-trace-service-local',
-	Key: 'some-client/2019/05/29/a1d2asd1-1a23-a23d-as1d-0asdas2130.json',
+	Key: 'some-client/2019/05/29/some-service/api/a1d2asd1-1a23-a23d-as1d-0asdas2130.json',
 	Body: JSON.stringify({ ...fakeLog, service: 'some-service' }),
 	ContentType: 'application/json'
 };
@@ -84,7 +84,7 @@ describe('Log', () => {
 	describe('_validateLog', () => {
 
 		it('should not throw when the received log it\'s correct', async () => {
-			assert.doesNotThrow(() => Log._validateLog(fakeLog));
+			assert.doesNotThrow(() => Log._validateLog({ ...fakeLog, service: 'some-service' }));
 		});
 
 		['log', ['array']].forEach(log => {
@@ -117,15 +117,22 @@ describe('Log', () => {
 
 		context('when the received log fields have incorrect types', () => {
 
+			it('should throw if log.service is not a string', async () => {
+				assert.throws(() => Log._validateLog({ service: {} }), {
+					name: 'LogError',
+					code: LogError.codes.INVALID_LOG
+				});
+			});
+
 			it('should throw if log.entity is not a string', async () => {
-				assert.throws(() => Log._validateLog({ entity: 1, type: 2 }), {
+				assert.throws(() => Log._validateLog({ entity: 1, type: 2, service: 'some-service' }), {
 					name: 'LogError',
 					code: LogError.codes.INVALID_LOG
 				});
 			});
 
 			it('should throw if log.type is not a string or a number', async () => {
-				assert.throws(() => Log._validateLog({ entity: 'some-entity', type: {} }), {
+				assert.throws(() => Log._validateLog({ entity: 'some-entity', type: {}, service: 'some-service' }), {
 					name: 'LogError',
 					code: LogError.codes.INVALID_LOG
 				});
@@ -138,6 +145,16 @@ describe('Log', () => {
 		it('should call S3.putObject when try to put a log into S3', async () => {
 
 			await Log.add('some-client', fakeLog);
+
+			sandbox.assert.calledWithExactly(putObjectStub, expectedParams);
+			sandbox.assert.calledOnce(putObjectStub);
+		});
+
+		it('should publish the log to S3 using the specified service in log when log.service exists', async () => {
+
+			clearServiceEnvVars();
+
+			await Log.add('some-client', { ...fakeLog, service: 'some-service' });
 
 			sandbox.assert.calledWithExactly(putObjectStub, expectedParams);
 			sandbox.assert.calledOnce(putObjectStub);
@@ -222,7 +239,10 @@ describe('Log', () => {
 			});
 
 			it('should reject when the service name env not exists', async () => {
+
 				clearServiceEnvVars();
+				delete fakeLog.service;
+
 				await assert.rejects(Log._add('some-client', fakeLog), {
 					name: 'LogError',
 					code: LogError.codes.NO_SERVICE_NAME
