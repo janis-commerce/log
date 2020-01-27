@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/janis-commerce/log.svg?branch=master)](https://travis-ci.org/janis-commerce/log)
 [![Coverage Status](https://coveralls.io/repos/github/janis-commerce/log/badge.svg?branch=master)](https://coveralls.io/github/janis-commerce/log?branch=master)
 
-A package for creating logs in S3
+A package for creating logs in Firehose
 
 ## Installation
 ```sh
@@ -18,22 +18,22 @@ npm install @janiscommerce/log
 ## API
 ### **`add(clientCode, log)`**  
 Parameters: `clientCode [String]`, `log [Object]`  
-Puts the recieved log into the janis-trace-service bucket using the `clientCode` as key prefix.
+Puts the recieved log into the janis-trace-firehose
 
 ### Log structure
 The `log [Object]` parameter have the following structure:
+- **`id [String]`** (optional): The ID of the log in UUID V4 format. Default will be auto-generated.
 - **`service [String]`** (optional): The service name, if this field not exists, will be obtained from the ENV (**`JANIS_SERVICE_NAME`**)
-- **`type [String|Number]`** (required): The log type
+- **`type [String]`** (required): The log type
 - **`entity [String]`** (required): The name of the entity that is creating the log
 - **`entity_id [String]`** (optional): The ID of the entity that is creating the log
 - **`message [String]`** (optional): A general message about the log
-- **`log [Object]`** (optional): This property is a JSON that includes all the technical data about your log.
-- **`date_created [unix_timestamp]`** (optional): The date created of the log. Default will be auto-generated.
-- **`id [String]`** (optional): The ID of the log in UUID V4 format. Default will be auto-generated.
+- **`log [Object|Array]`** (optional): This property is a JSON that includes all the technical data about your log.
 
 ### Log example
 ```js
 {
+  id: '0acefd5e-cb90-4531-b27a-e4d236f07539',
   type: 'new',
   entity: 'api',
   entity_id: 'log',
@@ -45,11 +45,10 @@ The `log [Object]` parameter have the following structure:
     headers: {
       'x-forwarded-for': '12.345.67.89',
       'x-forwarded-proto': 'https',
-      'x-forwarded-port': '443',
+      'x-forwarded-port': '443'
     },
     responseHttpCode: 200
-  },
-  id: '0acefd5e-cb90-4531-b27a-e4d236f07539'
+  }
 }
 ```
 
@@ -66,10 +65,8 @@ The codes are the following:
 | Code | Description                    |
 |------|--------------------------------|
 | 1    | Invalid log                    |
-| 2    | Invalid client                 |
-| 3    | S3 Error                       |
-| 4    | Unknown service name           |
-| 5    | Unknown stage name             |
+| 2    | S3 Error                       |
+| 3    | Unknown stage name             |
 
 In case of error while creating your log into S3, this package will emit an event called `create-error`, you can handle it using the `on()` method.
 
@@ -91,7 +88,7 @@ Log.on('create-error', (log, err) => {
 ```
 
 ## Notes
-In order to connect into S3, this package requires the aws volume in the `docker-compose.yml`.
+In order to connect into Firehose, this package requires the aws volume in the `docker-compose.yml`.
 
 ```yml
 volumes:

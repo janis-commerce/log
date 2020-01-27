@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Added
+- Log struct and formatting
+
+### Changed
+- Uploading logs to Firehose instead S3
+- Log `type` field now can be only a string, not a number
+
 ## [2.0.0] - 2019-12-05
 ### Added
 - `service` field support, will use it if exists, or will use ENV service name otherwise.
