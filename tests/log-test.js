@@ -26,7 +26,7 @@ describe('Log', () => {
 		entity: fakeLog.entity,
 		entityId: fakeLog.entityId,
 		type: fakeLog.type,
-		log: fakeLog.log,
+		log: JSON.stringify(fakeLog.log),
 		message: fakeLog.message,
 		client: 'some-client'
 	};
@@ -39,8 +39,8 @@ describe('Log', () => {
 		delete process.env.JANIS_SERVICE_NAME;
 	};
 
-	const setStageEnvVars = () => {
-		process.env.JANIS_ENV = 'local';
+	const setStageEnvVars = env => {
+		process.env.JANIS_ENV = env;
 	};
 
 	const clearStageEnvVars = () => {
@@ -59,7 +59,7 @@ describe('Log', () => {
 
 	beforeEach(() => {
 		setServiceEnvVars();
-		setStageEnvVars();
+		setStageEnvVars('local');
 	});
 
 	describe('add', () => {
@@ -75,7 +75,7 @@ describe('Log', () => {
 
 			sandbox.assert.calledOnce(Firehose.prototype.putRecord);
 			sandbox.assert.calledWithExactly(Firehose.prototype.putRecord, {
-				DeliveryStreamName: 'janis-trace-firehose-local',
+				DeliveryStreamName: 'JanisTraceFirehoseLocal',
 				Record: {
 					Data: Buffer.from(JSON.stringify({ ...expectedLog, dateCreated: fakeTime.Date() }))
 				}
@@ -84,21 +84,25 @@ describe('Log', () => {
 
 		it('Should retry when Firehose fails', async () => {
 
+			clearStageEnvVars();
+			clearCaches();
+			setStageEnvVars('qa');
+
 			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
 
 			sandbox.stub(Firehose.prototype, 'putRecord')
 				.throws();
 
-			await Log.add('some-client', fakeLog);
+			await Log.add('some-client', { ...fakeLog, log: undefined });
 
 			sandbox.assert.calledThrice(Firehose.prototype.putRecord);
 
 			[0, 1, 2].forEach(call => {
 
 				sandbox.assert.calledWithExactly(Firehose.prototype.putRecord.getCall(call), {
-					DeliveryStreamName: 'janis-trace-firehose-local',
+					DeliveryStreamName: 'JanisTraceFirehoseQA',
 					Record: {
-						Data: Buffer.from(JSON.stringify({ ...expectedLog, dateCreated: fakeTime.Date() }))
+						Data: Buffer.from(JSON.stringify({ ...expectedLog, log: undefined, dateCreated: fakeTime.Date() }))
 					}
 				});
 			});
