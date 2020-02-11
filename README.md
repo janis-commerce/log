@@ -65,7 +65,7 @@ The codes are the following:
 | Code | Description                    |
 |------|--------------------------------|
 | 1    | Invalid log                    |
-| 2    | S3 Error                       |
+| 2    | Firehose Error                 |
 | 3    | Unknown stage name             |
 
 In case of error while creating your log into S3, this package will emit an event called `create-error`, you can handle it using the `on()` method.
