@@ -86,11 +86,3 @@ Log.on('create-error', (log, err) => {
 	console.error(`An error occurred while creating the log ${err.message}`);
 });
 ```
-
-## Notes
-In order to connect into Firehose, this package requires the aws volume in the `docker-compose.yml`.
-
-```yml
-volumes:
-  ~/.aws:/root/.aws
-```
