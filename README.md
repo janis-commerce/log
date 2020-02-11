@@ -26,7 +26,7 @@ The `log [Object]` parameter have the following structure:
 - **`service [String]`** (optional): The service name, if this field not exists, will be obtained from the ENV (**`JANIS_SERVICE_NAME`**)
 - **`type [String]`** (required): The log type
 - **`entity [String]`** (required): The name of the entity that is creating the log
-- **`entity_id [String]`** (optional): The ID of the entity that is creating the log
+- **`entityId [String]`** (optional): The ID of the entity that is creating the log
 - **`message [String]`** (optional): A general message about the log
 - **`log [Object|Array]`** (optional): This property is a JSON that includes all the technical data about your log.
 
@@ -77,7 +77,7 @@ const Log = require('@janiscommerce/log');
 Log.add('some-client', {
 	type: 1,
 	entity: 'api',
-	entity_id: 'product',
+	entityId: 'product',
 	message: '[GET] Request from 0.0.0.0 of custom_data'
 	// ...
 });

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Uploading logs to Firehose instead S3
 - Log `type` field now can be only a string, not a number
+- Snake_case fields deprecated, only camelCase
 
 ## [2.0.0] - 2019-12-05
 ### Added
