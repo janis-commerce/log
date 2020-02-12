@@ -10,7 +10,8 @@ const Log = require('../lib/log');
 describe('Log', () => {
 
 	const fakeLog = {
-		id: 'some-log-id',
+		id: 'some-id',
+		service: 'some-service',
 		type: 'some-type',
 		entity: 'some-entity',
 		entityId: 'some-entity_id',
@@ -21,7 +22,7 @@ describe('Log', () => {
 	};
 
 	const expectedLog = {
-		id: fakeLog.id,
+		id: 'some-id',
 		service: 'some-service',
 		entity: fakeLog.entity,
 		entityId: fakeLog.entityId,
@@ -32,7 +33,7 @@ describe('Log', () => {
 	};
 
 	const setServiceEnvVars = () => {
-		process.env.JANIS_SERVICE_NAME = 'some-service';
+		process.env.JANIS_SERVICE_NAME = 'default-service';
 	};
 
 	const clearServiceEnvVars = () => {
@@ -82,6 +83,37 @@ describe('Log', () => {
 			});
 		});
 
+		it('Should send a log to Firehose with defaults values', async () => {
+
+			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
+
+			sandbox.stub(Firehose.prototype, 'putRecord')
+				.returns();
+
+			await Log.add('some-client', {
+				...fakeLog,
+				id: undefined,
+				service: undefined
+			});
+
+			sandbox.assert.calledOnce(Firehose.prototype.putRecord);
+			sandbox.assert.calledWithMatch(Firehose.prototype.putRecord, {
+				DeliveryStreamName: 'JanisTraceFirehoseLocal',
+				Record: { Data: {} }
+			});
+
+			const [{ Record }] = Firehose.prototype.putRecord.lastCall.args;
+
+			const uploadedLog = JSON.parse(Record.Data.toString());
+
+			sandbox.assert.match(uploadedLog, {
+				...expectedLog,
+				id: sandbox.match.string,
+				service: 'default-service',
+				dateCreated: fakeTime.Date().toISOString()
+			});
+		});
+
 		it('Should retry when Firehose fails', async () => {
 
 			clearStageEnvVars();
@@ -127,7 +159,7 @@ describe('Log', () => {
 
 			sandbox.spy(Firehose.prototype, 'putRecord');
 
-			await Log.add('some-client', fakeLog);
+			await Log.add('some-client', { ...fakeLog, service: undefined });
 
 			sandbox.assert.notCalled(Firehose.prototype.putRecord);
 		});
