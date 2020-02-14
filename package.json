@@ -1,7 +1,7 @@
 {
   "name": "@janiscommerce/log",
-  "version": "2.0.0",
-  "description": "A package for creating logs in S3",
+  "version": "3.0.0",
+  "description": "A package for creating logs in Firehose",
   "main": "lib/log.js",
   "scripts": {
     "test": "export TEST_ENV=true; mocha --exit -R nyan --recursive tests/",
