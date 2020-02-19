@@ -13,7 +13,15 @@ npm install @janiscommerce/log
 ## Configuration
 ### ENV variables
 **`JANIS_SERVICE_NAME`** (required): The name of the service that will create the log.  
-**`JANIS_ENV`** (required): The name stage that will used as suffix for janis-trace-service bucket.
+**`TRACE_AWS_ACCESS_KEY_ID`** (required): The name AWS access key id of the trace account that put records in Firehose.  
+**`TRACE_AWS_SECRET_ACCESS_KEY`** (required): The name AWS secret access key of the trace account that put records in Firehose.  
+**`TRACE_DELIVERY_STREAM_NAME`** (required): The name of the trace Firehose Delivery Stream Name.  
+
+**Trace delivery stream names**
+- `JanisTraceFirehoseLocal`: Delivery stream name for local environment
+- `JanisTraceFirehoseBeta`: Delivery stream name for beta environment
+- `JanisTraceFirehoseQA`: Delivery stream name for QA environment
+- `JanisTraceFirehoseProd`: Delivery stream name for prod environment
 
 ## API
 ### **`add(clientCode, log)`**  
@@ -22,7 +30,7 @@ Puts the recieved log into the janis-trace-firehose
 
 ### Log structure
 The `log [Object]` parameter have the following structure:
-- **`id [String]`** (optional): The ID of the log in UUID V4 format. Default will be auto-generated.
+- **`id [String]`** (optional): The ID of the log in UUID **V4** format. Default will be auto-generated.
 - **`service [String]`** (optional): The service name, if this field not exists, will be obtained from the ENV (**`JANIS_SERVICE_NAME`**)
 - **`type [String]`** (required): The log type
 - **`entity [String]`** (required): The name of the entity that is creating the log
@@ -66,7 +74,7 @@ The codes are the following:
 |------|--------------------------------|
 | 1    | Invalid log                    |
 | 2    | Firehose Error                 |
-| 3    | Unknown stage name             |
+| 3    | Unknown delivery stream name   |
 
 In case of error while creating your log into S3, this package will emit an event called `create-error`, you can handle it using the `on()` method.
 

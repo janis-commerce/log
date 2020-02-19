@@ -40,27 +40,23 @@ describe('Log', () => {
 		delete process.env.JANIS_SERVICE_NAME;
 	};
 
-	const setStageEnvVars = env => {
-		process.env.JANIS_ENV = env;
+	const setDeliveryStreamEnvVars = deliveryStreamName => {
+		process.env.TRACE_DELIVERY_STREAM_NAME = deliveryStreamName;
 	};
 
-	const clearStageEnvVars = () => {
-		delete process.env.JANIS_ENV;
-	};
-
-	const clearCaches = () => {
-		delete Log._deliveryStreamName; // eslint-disable-line no-underscore-dangle
+	const clearDeliveryStreamEnvVars = () => {
+		delete process.env.TRACE_DELIVERY_STREAM_NAME;
 	};
 
 	afterEach(() => {
 		clearServiceEnvVars();
-		clearStageEnvVars();
+		clearDeliveryStreamEnvVars();
 		sandbox.restore();
 	});
 
 	beforeEach(() => {
 		setServiceEnvVars();
-		setStageEnvVars('local');
+		setDeliveryStreamEnvVars('JanisTraceFirehoseLocal');
 	});
 
 	describe('add', () => {
@@ -116,10 +112,6 @@ describe('Log', () => {
 
 		it('Should retry when Firehose fails', async () => {
 
-			clearStageEnvVars();
-			clearCaches();
-			setStageEnvVars('qa');
-
 			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
 
 			sandbox.stub(Firehose.prototype, 'putRecord')
@@ -132,7 +124,7 @@ describe('Log', () => {
 			[0, 1, 2].forEach(call => {
 
 				sandbox.assert.calledWithExactly(Firehose.prototype.putRecord.getCall(call), {
-					DeliveryStreamName: 'JanisTraceFirehoseQA',
+					DeliveryStreamName: 'JanisTraceFirehoseLocal',
 					Record: {
 						Data: Buffer.from(JSON.stringify({ ...expectedLog, log: undefined, dateCreated: fakeTime.Date() }))
 					}
@@ -140,10 +132,9 @@ describe('Log', () => {
 			});
 		});
 
-		it('Should not call Firehose putRecord when ENV stage variable not exists', async () => {
+		it('Should not call Firehose putRecord when ENV delivery stream name variable not exists', async () => {
 
-			clearStageEnvVars();
-			clearCaches();
+			clearDeliveryStreamEnvVars();
 
 			sandbox.spy(Firehose.prototype, 'putRecord');
 
@@ -155,7 +146,6 @@ describe('Log', () => {
 		it('Should not call Firehose putRecord when ENV service variable not exists', async () => {
 
 			clearServiceEnvVars();
-			clearCaches();
 
 			sandbox.spy(Firehose.prototype, 'putRecord');
 
