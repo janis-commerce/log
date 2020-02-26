@@ -3,7 +3,7 @@
 const assert = require('assert');
 const sandbox = require('sinon').createSandbox();
 
-const Firehose = require('../lib/firehose-wrapper');
+const { STS, Firehose } = require('../lib/aws-wrappers');
 
 const Log = require('../lib/log');
 
@@ -69,8 +69,11 @@ describe('Log', () => {
 
 			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
 
+			sandbox.stub(STS.prototype, 'assumeRole')
+				.resolves({ credentials: { some: 'credentials' } });
+
 			sandbox.stub(Firehose.prototype, 'putRecord')
-				.returns();
+				.resolves();
 
 			await Log.add('some-client', fakeLog);
 
@@ -88,7 +91,7 @@ describe('Log', () => {
 			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
 
 			sandbox.stub(Firehose.prototype, 'putRecord')
-				.returns();
+				.resolves();
 
 			await Log.add('some-client', {
 				...fakeLog,
