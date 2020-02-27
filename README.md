@@ -14,6 +14,7 @@ npm install @janiscommerce/log
 ### ENV variables
 **`JANIS_SERVICE_NAME`** (required): The name of the service that will create the log.  
 **`JANIS_ENV`** (required): The name stage that will used as suffix for janis-trace-service bucket.
+**`LOG_ROLE_ARN`** (required): The ARN to assume the trace role in order to put records in Firehose.
 
 ## API
 ### **`add(clientCode, log)`**  

@@ -32,6 +32,15 @@ describe('Log', () => {
 		client: 'some-client'
 	};
 
+	const fakeRole = {
+		Credentials: {
+			AccessKeyId: 'some-access-key-id',
+			SecretAccessKey: 'some-secret-access-key',
+			SessionToken: 'some-session-token'
+		},
+		Expiration: '2020-02-27T21:07:21.177'
+	};
+
 	const setServiceEnvVars = () => {
 		process.env.JANIS_SERVICE_NAME = 'default-service';
 	};
@@ -70,7 +79,7 @@ describe('Log', () => {
 			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
 
 			sandbox.stub(STS.prototype, 'assumeRole')
-				.resolves({ credentials: { some: 'credentials' } });
+				.resolves(fakeRole);
 
 			sandbox.stub(Firehose.prototype, 'putRecord')
 				.resolves();
