@@ -41,6 +41,14 @@ describe('Log', () => {
 		Expiration: '2020-02-27T21:07:21.177'
 	};
 
+	const setRoleEnvVars = () => {
+		process.env.LOG_ROLE_ARN = 'some-role-arn';
+	};
+
+	const clearRoleEnvVars = () => {
+		delete process.env.LOG_ROLE_ARN;
+	};
+
 	const setServiceEnvVars = () => {
 		process.env.JANIS_SERVICE_NAME = 'default-service';
 	};
@@ -59,45 +67,93 @@ describe('Log', () => {
 
 	const clearCaches = () => {
 		delete Log._deliveryStreamName; // eslint-disable-line no-underscore-dangle
+		delete Log._credentialsExpiration; // eslint-disable-line no-underscore-dangle
+		delete Log._firehose; // eslint-disable-line no-underscore-dangle
 	};
 
 	afterEach(() => {
+		clearRoleEnvVars();
 		clearServiceEnvVars();
 		clearStageEnvVars();
+		clearCaches();
 		sandbox.restore();
 	});
 
 	beforeEach(() => {
+		setRoleEnvVars();
 		setServiceEnvVars();
 		setStageEnvVars('local');
 	});
 
 	describe('add', () => {
 
-		it('Should send a log to Firehose', async () => {
+		it('Should send a logs to Firehose and cache the assumed role credentials', async () => {
 
 			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
 
 			sandbox.stub(STS.prototype, 'assumeRole')
-				.resolves(fakeRole);
+				.resolves({ ...fakeRole, Expiration: fakeTime.Date() });
 
 			sandbox.stub(Firehose.prototype, 'putRecord')
 				.resolves();
 
 			await Log.add('some-client', fakeLog);
 
-			sandbox.assert.calledOnce(Firehose.prototype.putRecord);
+			await Log.add('other-client', fakeLog);
+
+			sandbox.assert.calledTwice(Firehose.prototype.putRecord);
 			sandbox.assert.calledWithExactly(Firehose.prototype.putRecord, {
 				DeliveryStreamName: 'JanisTraceFirehoseLocal',
 				Record: {
 					Data: Buffer.from(JSON.stringify({ ...expectedLog, dateCreated: fakeTime.Date() }))
 				}
 			});
+
+			sandbox.assert.calledOnce(STS.prototype.assumeRole);
+			sandbox.assert.calledWithExactly(STS.prototype.assumeRole, {
+				RoleArn: 'some-role-arn',
+				RoleSessionName: 'default-service',
+				DurationSeconds: 1800
+			});
+		});
+
+		it('Should get new role credentials when the previous ones expires', async () => {
+
+			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
+
+			sandbox.stub(STS.prototype, 'assumeRole')
+				.resolves({ ...fakeRole, Expiration: fakeTime.Date() });
+
+			sandbox.stub(Firehose.prototype, 'putRecord')
+				.resolves();
+
+			await Log.add('some-client', fakeLog);
+
+			fakeTime.tick(1800000); // 30 min
+
+			await Log.add('other-client', fakeLog);
+
+			sandbox.assert.calledTwice(Firehose.prototype.putRecord);
+
+			sandbox.assert.calledTwice(STS.prototype.assumeRole);
+			sandbox.assert.calledWithExactly(STS.prototype.assumeRole.getCall(0), {
+				RoleArn: 'some-role-arn',
+				RoleSessionName: 'default-service',
+				DurationSeconds: 1800
+			});
+			sandbox.assert.calledWithExactly(STS.prototype.assumeRole.getCall(1), {
+				RoleArn: 'some-role-arn',
+				RoleSessionName: 'default-service',
+				DurationSeconds: 1800
+			});
 		});
 
 		it('Should send a log to Firehose with defaults values', async () => {
 
 			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
+
+			sandbox.stub(STS.prototype, 'assumeRole')
+				.resolves({ ...fakeRole, Expiration: fakeTime.Date() });
 
 			sandbox.stub(Firehose.prototype, 'putRecord')
 				.resolves();
@@ -124,15 +180,24 @@ describe('Log', () => {
 				service: 'default-service',
 				dateCreated: fakeTime.Date().toISOString()
 			});
+
+			sandbox.assert.calledOnce(STS.prototype.assumeRole);
+			sandbox.assert.calledWithExactly(STS.prototype.assumeRole, {
+				RoleArn: 'some-role-arn',
+				RoleSessionName: 'default-service',
+				DurationSeconds: 1800
+			});
 		});
 
 		it('Should retry when Firehose fails', async () => {
 
 			clearStageEnvVars();
-			clearCaches();
 			setStageEnvVars('qa');
 
 			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
+
+			sandbox.stub(STS.prototype, 'assumeRole')
+				.resolves({ ...fakeRole, Expiration: fakeTime.Date() });
 
 			sandbox.stub(Firehose.prototype, 'putRecord')
 				.throws();
@@ -150,12 +215,21 @@ describe('Log', () => {
 					}
 				});
 			});
+
+			sandbox.assert.calledOnce(STS.prototype.assumeRole);
+			sandbox.assert.calledWithExactly(STS.prototype.assumeRole, {
+				RoleArn: 'some-role-arn',
+				RoleSessionName: 'default-service',
+				DurationSeconds: 1800
+			});
 		});
 
 		it('Should not call Firehose putRecord when ENV stage variable not exists', async () => {
 
 			clearStageEnvVars();
-			clearCaches();
+
+			sandbox.stub(STS.prototype, 'assumeRole')
+				.resolves(fakeRole);
 
 			sandbox.spy(Firehose.prototype, 'putRecord');
 
@@ -167,7 +241,6 @@ describe('Log', () => {
 		it('Should not call Firehose putRecord when ENV service variable not exists', async () => {
 
 			clearServiceEnvVars();
-			clearCaches();
 
 			sandbox.spy(Firehose.prototype, 'putRecord');
 
