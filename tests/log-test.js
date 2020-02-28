@@ -129,7 +129,7 @@ describe('Log', () => {
 
 			await Log.add('some-client', fakeLog);
 
-			fakeTime.tick(1800000); // 30 min
+			fakeTime.tick(1900000); // more than 30 min
 
 			await Log.add('other-client', fakeLog);
 
@@ -148,12 +148,13 @@ describe('Log', () => {
 			});
 		});
 
-		it('Should send a log to Firehose with defaults values', async () => {
+		it('Should send a log to Firehose with defaults values and not get credentials if there are no Role ARN ENV', async () => {
+
+			clearRoleEnvVars();
 
 			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
 
-			sandbox.stub(STS.prototype, 'assumeRole')
-				.resolves({ ...fakeRole, Expiration: fakeTime.Date() });
+			sandbox.spy(STS.prototype, 'assumeRole');
 
 			sandbox.stub(Firehose.prototype, 'putRecord')
 				.resolves();
@@ -181,12 +182,7 @@ describe('Log', () => {
 				dateCreated: fakeTime.Date().toISOString()
 			});
 
-			sandbox.assert.calledOnce(STS.prototype.assumeRole);
-			sandbox.assert.calledWithExactly(STS.prototype.assumeRole, {
-				RoleArn: 'some-role-arn',
-				RoleSessionName: 'default-service',
-				DurationSeconds: 1800
-			});
+			sandbox.assert.notCalled(STS.prototype.assumeRole);
 		});
 
 		it('Should retry when Firehose fails', async () => {
