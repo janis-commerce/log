@@ -245,6 +245,30 @@ describe('Log', () => {
 			sandbox.assert.notCalled(Firehose.prototype.putRecord);
 		});
 
+		it('Should not call Firehose putRecord when assume role rejects', async () => {
+
+			sandbox.stub(STS.prototype, 'assumeRole')
+				.rejects();
+
+			sandbox.spy(Firehose.prototype, 'putRecord');
+
+			await Log.add('some-client', fakeLog);
+
+			sandbox.assert.notCalled(Firehose.prototype.putRecord);
+		});
+
+		it('Should not call Firehose putRecord when assume role returns an invalid result', async () => {
+
+			sandbox.stub(STS.prototype, 'assumeRole')
+				.resolves(null);
+
+			sandbox.spy(Firehose.prototype, 'putRecord');
+
+			await Log.add('some-client', fakeLog);
+
+			sandbox.assert.notCalled(Firehose.prototype.putRecord);
+		});
+
 		it('Should emit an error when something goes wrong', async () => {
 
 			let errorEmitted = false;
