@@ -13,13 +13,13 @@ npm install @janiscommerce/log
 ## Configuration
 ### ENV variables
 **`JANIS_SERVICE_NAME`** (required): The name of the service that will create the log.  
-**`JANIS_ENV`** (required): The name stage that will used as suffix for janis-trace-service bucket.
+**`JANIS_ENV`** (required): The stage name that will used as prefix for trace firehose delivery stream.
 **`LOG_ROLE_ARN`** (required): The ARN to assume the trace role in order to put records in Firehose.
 
 ## API
-### **`add(clientCode, log)`**  
-Parameters: `clientCode [String]`, `log [Object]`  
-Puts the recieved log into the janis-trace-firehose
+### **`add(clientCode, logs)`**  
+Parameters: `clientCode [String]`, `logs [Object] or [Object array]`  
+Puts the recieved log or logs into the janis-trace-firehose
 
 ### Log structure
 The `log [Object]` parameter have the following structure:
@@ -69,7 +69,8 @@ The codes are the following:
 | 2    | Firehose Error                 |
 | 3    | Unknown stage name             |
 
-In case of error while creating your log into S3, this package will emit an event called `create-error`, you can handle it using the `on()` method.
+- In case of error while creating your log into S3, this package will emit an event called `create-error`, you can handle it using the `on()` method.
+- In case of an invalid log was received this package will emit an event called `validate-error`, you can handle it using the `on()` method.
 
 ## Usage
 ```js
@@ -85,5 +86,9 @@ Log.add('some-client', {
 
 Log.on('create-error', (log, err) => {
 	console.error(`An error occurred while creating the log ${err.message}`);
+});
+
+Log.on('validate-error', (log, err) => {
+	console.error(`An invalid log was received ${err.message}`);
 });
 ```

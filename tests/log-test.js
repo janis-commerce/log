@@ -87,34 +87,51 @@ describe('Log', () => {
 
 	describe('add', () => {
 
-		it('Should send a logs to Firehose and cache the assumed role credentials', async () => {
+		it('Should send logs to Firehose and cache the assumed role credentials', async () => {
 
 			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
 
 			sandbox.stub(STS.prototype, 'assumeRole')
 				.resolves({ ...fakeRole, Expiration: fakeTime.Date() });
 
-			sandbox.stub(Firehose.prototype, 'putRecord')
+			sandbox.stub(Firehose.prototype, 'putRecordBatch')
 				.resolves();
 
 			await Log.add('some-client', fakeLog);
 
 			await Log.add('other-client', fakeLog);
 
-			sandbox.assert.calledTwice(Firehose.prototype.putRecord);
-			sandbox.assert.calledWithExactly(Firehose.prototype.putRecord, {
+			sandbox.assert.calledTwice(Firehose.prototype.putRecordBatch);
+			sandbox.assert.calledWithExactly(Firehose.prototype.putRecordBatch, {
 				DeliveryStreamName: 'JanisTraceFirehoseLocal',
-				Record: {
-					Data: Buffer.from(JSON.stringify({ ...expectedLog, dateCreated: fakeTime.Date() }))
-				}
+				Records: [
+					{
+						Data: Buffer.from(JSON.stringify({ ...expectedLog, dateCreated: fakeTime.Date() }))
+					}
+				]
 			});
 
-			sandbox.assert.calledOnce(STS.prototype.assumeRole);
-			sandbox.assert.calledWithExactly(STS.prototype.assumeRole, {
+			sandbox.assert.calledOnceWithExactly(STS.prototype.assumeRole, {
 				RoleArn: 'some-role-arn',
 				RoleSessionName: 'default-service',
 				DurationSeconds: 1800
 			});
+		});
+
+		it('Should split the received logs into batches of 500 logs', async () => {
+
+			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
+
+			sandbox.stub(STS.prototype, 'assumeRole')
+				.resolves({ ...fakeRole, Expiration: fakeTime.Date() });
+
+			sandbox.stub(Firehose.prototype, 'putRecordBatch')
+				.resolves();
+
+			await Log.add('some-client', Array(1250).fill(fakeLog));
+
+			sandbox.assert.calledThrice(Firehose.prototype.putRecordBatch);
+			sandbox.assert.calledOnce(STS.prototype.assumeRole);
 		});
 
 		it('Should get new role credentials when the previous ones expires', async () => {
@@ -124,7 +141,7 @@ describe('Log', () => {
 			sandbox.stub(STS.prototype, 'assumeRole')
 				.resolves({ ...fakeRole, Expiration: fakeTime.Date() });
 
-			sandbox.stub(Firehose.prototype, 'putRecord')
+			sandbox.stub(Firehose.prototype, 'putRecordBatch')
 				.resolves();
 
 			await Log.add('some-client', fakeLog);
@@ -133,7 +150,7 @@ describe('Log', () => {
 
 			await Log.add('other-client', fakeLog);
 
-			sandbox.assert.calledTwice(Firehose.prototype.putRecord);
+			sandbox.assert.calledTwice(Firehose.prototype.putRecordBatch);
 
 			sandbox.assert.calledTwice(STS.prototype.assumeRole);
 			sandbox.assert.calledWithExactly(STS.prototype.assumeRole.getCall(0), {
@@ -156,7 +173,7 @@ describe('Log', () => {
 
 			sandbox.spy(STS.prototype, 'assumeRole');
 
-			sandbox.stub(Firehose.prototype, 'putRecord')
+			sandbox.stub(Firehose.prototype, 'putRecordBatch')
 				.resolves();
 
 			await Log.add('some-client', {
@@ -165,15 +182,11 @@ describe('Log', () => {
 				service: undefined
 			});
 
-			sandbox.assert.calledOnce(Firehose.prototype.putRecord);
-			sandbox.assert.calledWithMatch(Firehose.prototype.putRecord, {
-				DeliveryStreamName: 'JanisTraceFirehoseLocal',
-				Record: { Data: {} }
-			});
+			sandbox.assert.calledOnce(Firehose.prototype.putRecordBatch);
 
-			const [{ Record }] = Firehose.prototype.putRecord.lastCall.args;
+			const [{ Records }] = Firehose.prototype.putRecordBatch.lastCall.args;
 
-			const uploadedLog = JSON.parse(Record.Data.toString());
+			const uploadedLog = JSON.parse(Records[0].Data.toString());
 
 			sandbox.assert.match(uploadedLog, {
 				...expectedLog,
@@ -185,7 +198,7 @@ describe('Log', () => {
 			sandbox.assert.notCalled(STS.prototype.assumeRole);
 		});
 
-		it('Should retry when Firehose fails', async () => {
+		it('Should retry when Firehose fails and emit the create-error event when max retries reached', async () => {
 
 			clearStageEnvVars();
 			setStageEnvVars('qa');
@@ -195,81 +208,8 @@ describe('Log', () => {
 			sandbox.stub(STS.prototype, 'assumeRole')
 				.resolves({ ...fakeRole, Expiration: fakeTime.Date() });
 
-			sandbox.stub(Firehose.prototype, 'putRecord')
+			sandbox.stub(Firehose.prototype, 'putRecordBatch')
 				.throws();
-
-			await Log.add('some-client', { ...fakeLog, log: undefined });
-
-			sandbox.assert.calledThrice(Firehose.prototype.putRecord);
-
-			[0, 1, 2].forEach(call => {
-
-				sandbox.assert.calledWithExactly(Firehose.prototype.putRecord.getCall(call), {
-					DeliveryStreamName: 'JanisTraceFirehoseQA',
-					Record: {
-						Data: Buffer.from(JSON.stringify({ ...expectedLog, log: undefined, dateCreated: fakeTime.Date() }))
-					}
-				});
-			});
-
-			sandbox.assert.calledOnce(STS.prototype.assumeRole);
-			sandbox.assert.calledWithExactly(STS.prototype.assumeRole, {
-				RoleArn: 'some-role-arn',
-				RoleSessionName: 'default-service',
-				DurationSeconds: 1800
-			});
-		});
-
-		it('Should not call Firehose putRecord when ENV stage variable not exists', async () => {
-
-			clearStageEnvVars();
-
-			sandbox.stub(STS.prototype, 'assumeRole')
-				.resolves(fakeRole);
-
-			sandbox.spy(Firehose.prototype, 'putRecord');
-
-			await Log.add('some-client', fakeLog);
-
-			sandbox.assert.notCalled(Firehose.prototype.putRecord);
-		});
-
-		it('Should not call Firehose putRecord when ENV service variable not exists', async () => {
-
-			clearServiceEnvVars();
-
-			sandbox.spy(Firehose.prototype, 'putRecord');
-
-			await Log.add('some-client', { ...fakeLog, service: undefined });
-
-			sandbox.assert.notCalled(Firehose.prototype.putRecord);
-		});
-
-		it('Should not call Firehose putRecord when assume role rejects', async () => {
-
-			sandbox.stub(STS.prototype, 'assumeRole')
-				.rejects();
-
-			sandbox.spy(Firehose.prototype, 'putRecord');
-
-			await Log.add('some-client', fakeLog);
-
-			sandbox.assert.notCalled(Firehose.prototype.putRecord);
-		});
-
-		it('Should not call Firehose putRecord when assume role returns an invalid result', async () => {
-
-			sandbox.stub(STS.prototype, 'assumeRole')
-				.resolves(null);
-
-			sandbox.spy(Firehose.prototype, 'putRecord');
-
-			await Log.add('some-client', fakeLog);
-
-			sandbox.assert.notCalled(Firehose.prototype.putRecord);
-		});
-
-		it('Should emit an error when something goes wrong', async () => {
 
 			let errorEmitted = false;
 
@@ -277,9 +217,78 @@ describe('Log', () => {
 				errorEmitted = true;
 			});
 
-			await Log.add('some-client', { invalid: 'log' });
+			await Log.add('some-client', { ...fakeLog, log: undefined });
+
+			sandbox.assert.calledThrice(Firehose.prototype.putRecordBatch);
 
 			assert.deepEqual(errorEmitted, true);
+
+			[0, 1, 2].forEach(call => {
+
+				sandbox.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(call), {
+					DeliveryStreamName: 'JanisTraceFirehoseQA',
+					Records: [
+						{
+							Data: Buffer.from(JSON.stringify({ ...expectedLog, log: undefined, dateCreated: fakeTime.Date() }))
+						}
+					]
+				});
+			});
+
+			sandbox.assert.calledOnceWithExactly(STS.prototype.assumeRole, {
+				RoleArn: 'some-role-arn',
+				RoleSessionName: 'default-service',
+				DurationSeconds: 1800
+			});
+		});
+
+		it('Should not call Firehose putRecordBatch when ENV stage variable not exists', async () => {
+
+			clearStageEnvVars();
+
+			sandbox.stub(STS.prototype, 'assumeRole')
+				.resolves(fakeRole);
+
+			sandbox.spy(Firehose.prototype, 'putRecordBatch');
+
+			await Log.add('some-client', fakeLog);
+
+			sandbox.assert.notCalled(Firehose.prototype.putRecordBatch);
+		});
+
+		it('Should not call Firehose putRecordBatch when ENV service variable not exists', async () => {
+
+			clearServiceEnvVars();
+
+			sandbox.spy(Firehose.prototype, 'putRecordBatch');
+
+			await Log.add('some-client', { ...fakeLog, service: undefined });
+
+			sandbox.assert.notCalled(Firehose.prototype.putRecordBatch);
+		});
+
+		it('Should not call Firehose putRecordBatch when assume role rejects', async () => {
+
+			sandbox.stub(STS.prototype, 'assumeRole')
+				.rejects();
+
+			sandbox.spy(Firehose.prototype, 'putRecordBatch');
+
+			await Log.add('some-client', fakeLog);
+
+			sandbox.assert.notCalled(Firehose.prototype.putRecordBatch);
+		});
+
+		it('Should not call Firehose putRecordBatch when assume role returns an invalid result', async () => {
+
+			sandbox.stub(STS.prototype, 'assumeRole')
+				.resolves(null);
+
+			sandbox.spy(Firehose.prototype, 'putRecordBatch');
+
+			await Log.add('some-client', fakeLog);
+
+			sandbox.assert.notCalled(Firehose.prototype.putRecordBatch);
 		});
 
 		context('When the received log is invalid', () => {
@@ -297,13 +306,26 @@ describe('Log', () => {
 
 			].forEach(log => {
 
-				it('Should not call Firehose putRecord', async () => {
+				it('Should emit a validate-error', async () => {
 
-					sandbox.spy(Firehose.prototype, 'putRecord');
+					sandbox.stub(STS.prototype, 'assumeRole')
+						.resolves(fakeRole);
 
-					await Log.add('some-client', log);
+					sandbox.stub(Firehose.prototype, 'putRecordBatch')
+						.resolves();
 
-					sandbox.assert.notCalled(Firehose.prototype.putRecord);
+					let errorEmitted = false;
+
+					Log.on('validate-error', () => {
+						errorEmitted = true;
+					});
+
+					await Log.add('some-client', [log, fakeLog]);
+
+					sandbox.assert.calledOnce(STS.prototype.assumeRole);
+					sandbox.assert.calledOnce(Firehose.prototype.putRecordBatch);
+
+					assert.deepEqual(errorEmitted, true);
 				});
 			});
 		});
