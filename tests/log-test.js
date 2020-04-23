@@ -82,7 +82,7 @@ describe('Log', () => {
 	beforeEach(() => {
 		setRoleEnvVars();
 		setServiceEnvVars();
-		setStageEnvVars('local');
+		setStageEnvVars('beta');
 	});
 
 	describe('add', () => {
@@ -103,7 +103,7 @@ describe('Log', () => {
 
 			sandbox.assert.calledTwice(Firehose.prototype.putRecordBatch);
 			sandbox.assert.calledWithExactly(Firehose.prototype.putRecordBatch, {
-				DeliveryStreamName: 'JanisTraceFirehoseLocal',
+				DeliveryStreamName: 'JanisTraceFirehoseBeta',
 				Records: [
 					{
 						Data: Buffer.from(JSON.stringify({ ...expectedLog, dateCreated: fakeTime.Date() }))
@@ -132,6 +132,20 @@ describe('Log', () => {
 
 			sandbox.assert.calledThrice(Firehose.prototype.putRecordBatch);
 			sandbox.assert.calledOnce(STS.prototype.assumeRole);
+		});
+
+		it('Should not send the log to Firehose when the env is local', async () => {
+
+			clearStageEnvVars();
+			setStageEnvVars('local');
+
+			sandbox.spy(STS.prototype, 'assumeRole');
+			sandbox.spy(Firehose.prototype, 'putRecordBatch');
+
+			await Log.add('some-client', fakeLog);
+
+			sandbox.assert.notCalled(STS.prototype.assumeRole);
+			sandbox.assert.notCalled(Firehose.prototype.putRecordBatch);
 		});
 
 		it('Should get new role credentials when the previous ones expires', async () => {
@@ -306,26 +320,15 @@ describe('Log', () => {
 
 			].forEach(log => {
 
-				it('Should emit a validate-error', async () => {
+				it('Should throw and not try to send the log to Firehose', async () => {
 
-					sandbox.stub(STS.prototype, 'assumeRole')
-						.resolves(fakeRole);
+					sandbox.spy(STS.prototype, 'assumeRole');
+					sandbox.spy(Firehose.prototype, 'putRecordBatch');
 
-					sandbox.stub(Firehose.prototype, 'putRecordBatch')
-						.resolves();
+					await Log.add('some-client', log);
 
-					let errorEmitted = false;
-
-					Log.on('validate-error', () => {
-						errorEmitted = true;
-					});
-
-					await Log.add('some-client', [log, fakeLog]);
-
-					sandbox.assert.calledOnce(STS.prototype.assumeRole);
-					sandbox.assert.calledOnce(Firehose.prototype.putRecordBatch);
-
-					assert.deepEqual(errorEmitted, true);
+					sandbox.assert.notCalled(STS.prototype.assumeRole);
+					sandbox.assert.notCalled(Firehose.prototype.putRecordBatch);
 				});
 			});
 		});

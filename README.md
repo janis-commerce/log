@@ -69,26 +69,83 @@ The codes are the following:
 | 2    | Firehose Error                 |
 | 3    | Unknown stage name             |
 
-- In case of error while creating your log into S3, this package will emit an event called `create-error`, you can handle it using the `on()` method.
-- In case of an invalid log was received this package will emit an event called `validate-error`, you can handle it using the `on()` method.
+- In case of error while sending your logs to Firehose, this package will emit an event called `create-error`, you can handle it using the `on()` method.
 
 ## Usage
 ```js
 const Log = require('@janiscommerce/log');
 
-Log.add('some-client', {
-	type: 1,
-	entity: 'api',
-	entityId: 'product',
-	message: '[GET] Request from 0.0.0.0 of custom_data'
-	// ...
+// Single log send
+await Log.add('some-client', {
+    service: "oms",
+    entity: "api",
+    entityId: "order",
+    type: "api-request",
+    dateCreated: "2020-04-21T17:16:01.324Z",
+    log: {
+        api: {
+            endpoint: "order/5ea1c7f48efca3c21654d4a3/pick-items",
+            httpMethod: "post"
+        },
+        request: {
+            headers: {
+                accept: "application/json",
+                "content-type": "application/json",
+                Host: "oms.host.com",
+                "janis-client": "some-client",
+                "X-Amzn-Trace-Id": "Root=1-fca3c2-5ea1c7f48efca3c21654d4a3",
+                "X-Forwarded-For": "12.354.67.890",
+                "X-Forwarded-Port": "123",
+                "X-Forwarded-Proto": "https"
+            },
+            data: {
+                0: {
+                    pickedQuantity: 1,
+                    pickingSessionId: "5ea1c88463d91e9758f2c1b8",
+                    pickerId: "5ea1c8895ebb38d472ccd8c3",
+                    id: "5EA1C88D6E94BC19F7FC1612",
+                    pickedEans: [
+                        "1234567890"
+                    ]
+                }
+            }
+        },
+        response: {
+            code: 200,
+            headers: {},
+            body: {}
+        },
+        executionTime: 868.251946
+    }
+}
 });
+
+// Multiple logs send
+await Log.add('some-client', [
+  {
+    service: "catalog",
+    entity: "account",
+    entityId: "5ea1c8c53fdac68fb60eac9e",
+    type: "upserted",
+    dateCreated: "2020-04-22T22:03:50.507Z",
+    log: {
+      id: "5ea1c8c53fdac68fb60eac9e",
+      referenceId: "rv-000005"
+    }
+  },
+  {
+    service: "catalog",
+    entity: "account",
+    entityId: "5ea1c8cd11f82560a364cbd4",
+    type: "upserted",
+    dateCreated: "2020-04-22T22:03:50.507Z",
+    log: {
+      id: "5ea1c8cd11f82560a364cbd4",
+      referenceId: "rf-00752"
+    }
+  }
+]);
 
 Log.on('create-error', (log, err) => {
 	console.error(`An error occurred while creating the log ${err.message}`);
 });
-
-Log.on('validate-error', (log, err) => {
-	console.error(`An invalid log was received ${err.message}`);
-});
-```
