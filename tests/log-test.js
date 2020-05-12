@@ -92,7 +92,7 @@ describe('Log', () => {
 			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
 
 			sandbox.stub(STS.prototype, 'assumeRole')
-				.resolves({ ...fakeRole, Expiration: fakeTime.Date() });
+				.resolves({ ...fakeRole, Expiration: fakeTime.Date().toISOString() });
 
 			sandbox.stub(Firehose.prototype, 'putRecordBatch')
 				.resolves();
@@ -123,7 +123,7 @@ describe('Log', () => {
 			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
 
 			sandbox.stub(STS.prototype, 'assumeRole')
-				.resolves({ ...fakeRole, Expiration: fakeTime.Date() });
+				.resolves({ ...fakeRole, Expiration: fakeTime.Date().toISOString() });
 
 			sandbox.stub(Firehose.prototype, 'putRecordBatch')
 				.resolves();
@@ -153,7 +153,7 @@ describe('Log', () => {
 			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
 
 			sandbox.stub(STS.prototype, 'assumeRole')
-				.resolves({ ...fakeRole, Expiration: fakeTime.Date() });
+				.resolves({ ...fakeRole, Expiration: fakeTime.Date().toISOString() });
 
 			sandbox.stub(Firehose.prototype, 'putRecordBatch')
 				.resolves();
@@ -220,7 +220,7 @@ describe('Log', () => {
 			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
 
 			sandbox.stub(STS.prototype, 'assumeRole')
-				.resolves({ ...fakeRole, Expiration: fakeTime.Date() });
+				.resolves({ ...fakeRole, Expiration: fakeTime.Date().toISOString() });
 
 			sandbox.stub(Firehose.prototype, 'putRecordBatch')
 				.throws();
