@@ -212,6 +212,40 @@ describe('Log', () => {
 			sandbox.assert.notCalled(STS.prototype.assumeRole);
 		});
 
+		it('Should retry when Firehose fails', async () => {
+
+			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
+
+			sandbox.stub(STS.prototype, 'assumeRole')
+				.resolves({ ...fakeRole, Expiration: fakeTime.Date().toISOString() });
+
+			sandbox.stub(Firehose.prototype, 'putRecordBatch');
+
+			Firehose.prototype.putRecordBatch.onFirstCall()
+				.rejects();
+
+			Firehose.prototype.putRecordBatch.onSecondCall()
+				.resolves();
+
+			await Log.add('some-client', fakeLog);
+
+			sandbox.assert.calledTwice(Firehose.prototype.putRecordBatch);
+			sandbox.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {
+				DeliveryStreamName: 'JanisTraceFirehoseBeta',
+				Records: [
+					{
+						Data: Buffer.from(JSON.stringify({ ...expectedLog, dateCreated: fakeTime.Date() }))
+					}
+				]
+			});
+
+			sandbox.assert.calledOnceWithExactly(STS.prototype.assumeRole, {
+				RoleArn: 'some-role-arn',
+				RoleSessionName: 'default-service',
+				DurationSeconds: 1800
+			});
+		});
+
 		it('Should retry when Firehose fails and emit the create-error event when max retries reached', async () => {
 
 			clearStageEnvVars();
@@ -223,7 +257,7 @@ describe('Log', () => {
 				.resolves({ ...fakeRole, Expiration: fakeTime.Date().toISOString() });
 
 			sandbox.stub(Firehose.prototype, 'putRecordBatch')
-				.throws();
+				.rejects();
 
 			let errorEmitted = false;
 
@@ -233,20 +267,16 @@ describe('Log', () => {
 
 			await Log.add('some-client', { ...fakeLog, log: undefined });
 
-			sandbox.assert.calledThrice(Firehose.prototype.putRecordBatch);
-
 			assert.deepEqual(errorEmitted, true);
 
-			[0, 1, 2].forEach(call => {
-
-				sandbox.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(call), {
-					DeliveryStreamName: 'JanisTraceFirehoseQA',
-					Records: [
-						{
-							Data: Buffer.from(JSON.stringify({ ...expectedLog, log: undefined, dateCreated: fakeTime.Date() }))
-						}
-					]
-				});
+			sandbox.assert.calledThrice(Firehose.prototype.putRecordBatch);
+			sandbox.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {
+				DeliveryStreamName: 'JanisTraceFirehoseQA',
+				Records: [
+					{
+						Data: Buffer.from(JSON.stringify({ ...expectedLog, log: undefined, dateCreated: fakeTime.Date() }))
+					}
+				]
 			});
 
 			sandbox.assert.calledOnceWithExactly(STS.prototype.assumeRole, {
