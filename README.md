@@ -149,3 +149,24 @@ await Log.add('some-client', [
 Log.on('create-error', (log, err) => {
 	console.error(`An error occurred while creating the log ${err.message}`);
 });
+```
+
+### Serverless configuration
+
+In `path/to/root/serverless.js` add:
+
+```js
+'use strict';
+
+const { helper } = require('sls-helper'); // eslint-disable-line
+const functions = require('./serverless/functions.json');
+const  Log =  require('@janiscommerce/log');
+
+module.exports = helper({
+	hooks: [
+		// other hooks
+        ...functions,
+        ...Log.serverlessConfiguration
+	]
+});
+```
