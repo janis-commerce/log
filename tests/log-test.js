@@ -2,6 +2,7 @@
 
 const assert = require('assert');
 const sandbox = require('sinon').createSandbox();
+const Settings = require('@janiscommerce/settings');
 
 const { STS, Firehose } = require('../lib/aws-wrappers');
 
@@ -361,6 +362,24 @@ describe('Log', () => {
 					sandbox.assert.notCalled(Firehose.prototype.putRecordBatch);
 				});
 			});
+		});
+
+	});
+
+	context('Serverless configuration getter', () => {
+
+		it('Should return the serverless hooks', () => {
+
+			sandbox.stub(Settings, 'get').returns('logArnSource');
+
+			assert.deepStrictEqual(Log.serverlessConfiguration, [[
+				'iamStatement', {
+					action: 'Sts:AssumeRole',
+					resource: 'logArnSource'
+				}
+			]]);
+
+			sandbox.assert.calledOnceWithExactly(Settings.get, 'logRoleArn');
 		});
 	});
 });
