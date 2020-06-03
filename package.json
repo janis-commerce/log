@@ -34,6 +34,7 @@
     "test": "tests"
   },
   "dependencies": {
+    "@janiscommerce/settings": "^1.0.1",
     "@janiscommerce/superstruct": "^1.1.1",
     "aws-sdk": "^2.498.0",
     "uuid": "7.0.3"
