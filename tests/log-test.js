@@ -372,12 +372,15 @@ describe('Log', () => {
 
 			sandbox.stub(Settings, 'get').returns('logArnSource');
 
-			assert.deepStrictEqual(Log.serverlessConfiguration, [[
-				'iamStatement', {
-					action: 'Sts:AssumeRole',
-					resource: 'logArnSource'
-				}
-			]]);
+			assert.deepStrictEqual(Log.serverlessConfiguration, [
+				['envVars', {
+					LOG_ROLE_ARN: 'logArnSource'
+				}], [
+					'iamStatement', {
+						action: 'Sts:AssumeRole',
+						resource: 'logArnSource'
+					}
+				]]);
 
 			sandbox.assert.calledOnceWithExactly(Settings.get, 'logRoleArn');
 		});
