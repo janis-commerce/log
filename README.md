@@ -160,7 +160,7 @@ In `path/to/root/serverless.js` add:
 
 const { helper } = require('sls-helper'); // eslint-disable-line
 const functions = require('./serverless/functions.json');
-const  Log =  require('@janiscommerce/log');
+const  Log = require('@janiscommerce/log');
 
 module.exports = helper({
 	hooks: [

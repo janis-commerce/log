@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - serverlessConfiguration getter to easily get sls hooks.
-- FirehoseInstace to cache the instance
+- FirehoseInstance to cache the instance
 
 ## [3.2.0] - 2020-05-19
 ### Removed
@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [3.1.3] - 2020-05-15
 ### Fixed
-- Unit tests improoves 
+- Unit tests improoves
 - Errors that was not handled correctly
 
 ## [3.1.2] - 2020-05-12
