@@ -72,6 +72,8 @@ describe('Log', () => {
 		delete Log._firehose; // eslint-disable-line no-underscore-dangle
 	};
 
+	let fakeTime = null;
+
 	afterEach(() => {
 		clearRoleEnvVars();
 		clearServiceEnvVars();
@@ -81,6 +83,7 @@ describe('Log', () => {
 	});
 
 	beforeEach(() => {
+		fakeTime = sandbox.useFakeTimers(new Date());
 		setRoleEnvVars();
 		setServiceEnvVars();
 		setStageEnvVars('beta');
@@ -90,10 +93,8 @@ describe('Log', () => {
 
 		it('Should send logs to Firehose and cache the assumed role credentials', async () => {
 
-			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
-
 			sandbox.stub(STS.prototype, 'assumeRole')
-				.resolves({ ...fakeRole, Expiration: fakeTime.Date().toISOString() });
+				.resolves({ ...fakeRole, Expiration: new Date().toISOString() });
 
 			sandbox.stub(Firehose.prototype, 'putRecordBatch')
 				.resolves();
@@ -107,7 +108,7 @@ describe('Log', () => {
 				DeliveryStreamName: 'JanisTraceFirehoseBeta',
 				Records: [
 					{
-						Data: Buffer.from(JSON.stringify({ ...expectedLog, dateCreated: fakeTime.Date() }))
+						Data: Buffer.from(JSON.stringify({ ...expectedLog, dateCreated: new Date() }))
 					}
 				]
 			});
@@ -121,10 +122,8 @@ describe('Log', () => {
 
 		it('Should split the received logs into batches of 500 logs', async () => {
 
-			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
-
 			sandbox.stub(STS.prototype, 'assumeRole')
-				.resolves({ ...fakeRole, Expiration: fakeTime.Date().toISOString() });
+				.resolves({ ...fakeRole, Expiration: new Date().toISOString() });
 
 			sandbox.stub(Firehose.prototype, 'putRecordBatch')
 				.resolves();
@@ -151,10 +150,8 @@ describe('Log', () => {
 
 		it('Should get new role credentials when the previous ones expires', async () => {
 
-			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
-
 			sandbox.stub(STS.prototype, 'assumeRole')
-				.resolves({ ...fakeRole, Expiration: fakeTime.Date().toISOString() });
+				.resolves({ ...fakeRole, Expiration: new Date().toISOString() });
 
 			sandbox.stub(Firehose.prototype, 'putRecordBatch')
 				.resolves();
@@ -163,7 +160,7 @@ describe('Log', () => {
 
 			fakeTime.tick(1900000); // more than 30 min
 
-			await Log.add('other-client', fakeLog);
+			await Log.add('other-client',	 fakeLog);
 
 			sandbox.assert.calledTwice(Firehose.prototype.putRecordBatch);
 
@@ -183,8 +180,6 @@ describe('Log', () => {
 		it('Should send a log to Firehose with defaults values and not get credentials if there are no Role ARN ENV', async () => {
 
 			clearRoleEnvVars();
-
-			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
 
 			sandbox.spy(STS.prototype, 'assumeRole');
 
@@ -207,7 +202,7 @@ describe('Log', () => {
 				...expectedLog,
 				id: sandbox.match.string,
 				service: 'default-service',
-				dateCreated: fakeTime.Date().toISOString()
+				dateCreated: new Date().toISOString()
 			});
 
 			sandbox.assert.notCalled(STS.prototype.assumeRole);
@@ -215,10 +210,8 @@ describe('Log', () => {
 
 		it('Should retry when Firehose fails', async () => {
 
-			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
-
 			sandbox.stub(STS.prototype, 'assumeRole')
-				.resolves({ ...fakeRole, Expiration: fakeTime.Date().toISOString() });
+				.resolves({ ...fakeRole, Expiration: new Date().toISOString() });
 
 			sandbox.stub(Firehose.prototype, 'putRecordBatch');
 
@@ -235,7 +228,7 @@ describe('Log', () => {
 				DeliveryStreamName: 'JanisTraceFirehoseBeta',
 				Records: [
 					{
-						Data: Buffer.from(JSON.stringify({ ...expectedLog, dateCreated: fakeTime.Date() }))
+						Data: Buffer.from(JSON.stringify({ ...expectedLog, dateCreated: new Date() }))
 					}
 				]
 			});
@@ -252,10 +245,8 @@ describe('Log', () => {
 			clearStageEnvVars();
 			setStageEnvVars('qa');
 
-			const fakeTime = sandbox.useFakeTimers(new Date().getTime());
-
 			sandbox.stub(STS.prototype, 'assumeRole')
-				.resolves({ ...fakeRole, Expiration: fakeTime.Date().toISOString() });
+				.resolves({ ...fakeRole, Expiration: new Date().toISOString() });
 
 			sandbox.stub(Firehose.prototype, 'putRecordBatch')
 				.rejects();
@@ -275,7 +266,7 @@ describe('Log', () => {
 				DeliveryStreamName: 'JanisTraceFirehoseQA',
 				Records: [
 					{
-						Data: Buffer.from(JSON.stringify({ ...expectedLog, log: undefined, dateCreated: fakeTime.Date() }))
+						Data: Buffer.from(JSON.stringify({ ...expectedLog, log: undefined, dateCreated: new Date() }))
 					}
 				]
 			});

@@ -1,6 +1,6 @@
 {
   "name": "@janiscommerce/log",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "A package for creating logs in Firehose",
   "main": "lib/log.js",
   "scripts": {
@@ -18,14 +18,14 @@
   "license": "ISC",
   "homepage": "https://github.com/janis-commerce/log.git#readme",
   "devDependencies": {
-    "eslint": "^6.8.0",
+    "eslint": "^7.5.0",
     "eslint-config-airbnb-base": "^13.1.0",
     "eslint-plugin-import": "^2.20.2",
     "husky": "^4.2.5",
     "md5": "^2.2.1",
     "mocha": "^7.1.1",
-    "nyc": "^15.0.1",
-    "sinon": "^7.3.2"
+    "nyc": "^15.1.0",
+    "sinon": "^9.0.2"
   },
   "files": [
     "lib/"
