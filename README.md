@@ -153,14 +153,14 @@ Log.on('create-error', (log, err) => {
 
 ### Serverless configuration
 
-In `path/to/root/serverless.js` add:
+Returns an array with the hooks needed for Log's serverless configuration according to [Serverless Helper](https://www.npmjs.com/package/sls-helper-plugin-janis). In `path/to/root/serverless.js` add:
 
 ```js
 'use strict';
 
 const { helper } = require('sls-helper'); // eslint-disable-line
 const functions = require('./serverless/functions.json');
-const  Log = require('@janiscommerce/log');
+const Log = require('@janiscommerce/log');
 
 module.exports = helper({
 	hooks: [
