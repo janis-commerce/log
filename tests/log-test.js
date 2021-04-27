@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('assert');
-const sandbox = require('sinon').createSandbox();
+const sinon = require('sinon');
 const Settings = require('@janiscommerce/settings');
 
 const { STS, Firehose } = require('../lib/aws-wrappers');
@@ -42,30 +42,6 @@ describe('Log', () => {
 		Expiration: '2020-02-27T21:07:21.177'
 	};
 
-	const setRoleEnvVars = () => {
-		process.env.LOG_ROLE_ARN = 'some-role-arn';
-	};
-
-	const clearRoleEnvVars = () => {
-		delete process.env.LOG_ROLE_ARN;
-	};
-
-	const setServiceEnvVars = () => {
-		process.env.JANIS_SERVICE_NAME = 'default-service';
-	};
-
-	const clearServiceEnvVars = () => {
-		delete process.env.JANIS_SERVICE_NAME;
-	};
-
-	const setStageEnvVars = env => {
-		process.env.JANIS_ENV = env;
-	};
-
-	const clearStageEnvVars = () => {
-		delete process.env.JANIS_ENV;
-	};
-
 	const clearCaches = () => {
 		delete Log._deliveryStreamName; // eslint-disable-line no-underscore-dangle
 		delete Log._credentialsExpiration; // eslint-disable-line no-underscore-dangle
@@ -75,36 +51,30 @@ describe('Log', () => {
 	let fakeTime = null;
 
 	afterEach(() => {
-		clearRoleEnvVars();
-		clearServiceEnvVars();
-		clearStageEnvVars();
 		clearCaches();
-		sandbox.restore();
+		sinon.restore();
 	});
 
 	beforeEach(() => {
-		fakeTime = sandbox.useFakeTimers(new Date());
-		setRoleEnvVars();
-		setServiceEnvVars();
-		setStageEnvVars('beta');
+		fakeTime = sinon.useFakeTimers(new Date());
 	});
 
 	describe('add', () => {
 
 		it('Should send logs to Firehose and cache the assumed role credentials', async () => {
 
-			sandbox.stub(STS.prototype, 'assumeRole')
+			sinon.stub(STS.prototype, 'assumeRole')
 				.resolves({ ...fakeRole, Expiration: new Date().toISOString() });
 
-			sandbox.stub(Firehose.prototype, 'putRecordBatch')
+			sinon.stub(Firehose.prototype, 'putRecordBatch')
 				.resolves();
 
 			await Log.add('some-client', fakeLog);
 
 			await Log.add('other-client', fakeLog);
 
-			sandbox.assert.calledTwice(Firehose.prototype.putRecordBatch);
-			sandbox.assert.calledWithExactly(Firehose.prototype.putRecordBatch, {
+			sinon.assert.calledTwice(Firehose.prototype.putRecordBatch);
+			sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch, {
 				DeliveryStreamName: 'JanisTraceFirehoseBeta',
 				Records: [
 					{
@@ -113,7 +83,7 @@ describe('Log', () => {
 				]
 			});
 
-			sandbox.assert.calledOnceWithExactly(STS.prototype.assumeRole, {
+			sinon.assert.calledOnceWithExactly(STS.prototype.assumeRole, {
 				RoleArn: 'some-role-arn',
 				RoleSessionName: 'default-service',
 				DurationSeconds: 1800
@@ -122,38 +92,37 @@ describe('Log', () => {
 
 		it('Should split the received logs into batches of 500 logs', async () => {
 
-			sandbox.stub(STS.prototype, 'assumeRole')
+			sinon.stub(STS.prototype, 'assumeRole')
 				.resolves({ ...fakeRole, Expiration: new Date().toISOString() });
 
-			sandbox.stub(Firehose.prototype, 'putRecordBatch')
+			sinon.stub(Firehose.prototype, 'putRecordBatch')
 				.resolves();
 
 			await Log.add('some-client', Array(1250).fill(fakeLog));
 
-			sandbox.assert.calledThrice(Firehose.prototype.putRecordBatch);
-			sandbox.assert.calledOnce(STS.prototype.assumeRole);
+			sinon.assert.calledThrice(Firehose.prototype.putRecordBatch);
+			sinon.assert.calledOnce(STS.prototype.assumeRole);
 		});
 
 		it('Should not send the log to Firehose when the env is local', async () => {
 
-			clearStageEnvVars();
-			setStageEnvVars('local');
+			sinon.stub(process.env, 'JANIS_ENV').value('local');
 
-			sandbox.spy(STS.prototype, 'assumeRole');
-			sandbox.spy(Firehose.prototype, 'putRecordBatch');
+			sinon.spy(STS.prototype, 'assumeRole');
+			sinon.spy(Firehose.prototype, 'putRecordBatch');
 
 			await Log.add('some-client', fakeLog);
 
-			sandbox.assert.notCalled(STS.prototype.assumeRole);
-			sandbox.assert.notCalled(Firehose.prototype.putRecordBatch);
+			sinon.assert.notCalled(STS.prototype.assumeRole);
+			sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
 		});
 
 		it('Should get new role credentials when the previous ones expires', async () => {
 
-			sandbox.stub(STS.prototype, 'assumeRole')
+			sinon.stub(STS.prototype, 'assumeRole')
 				.resolves({ ...fakeRole, Expiration: new Date().toISOString() });
 
-			sandbox.stub(Firehose.prototype, 'putRecordBatch')
+			sinon.stub(Firehose.prototype, 'putRecordBatch')
 				.resolves();
 
 			await Log.add('some-client', fakeLog);
@@ -162,15 +131,15 @@ describe('Log', () => {
 
 			await Log.add('other-client',	 fakeLog);
 
-			sandbox.assert.calledTwice(Firehose.prototype.putRecordBatch);
+			sinon.assert.calledTwice(Firehose.prototype.putRecordBatch);
 
-			sandbox.assert.calledTwice(STS.prototype.assumeRole);
-			sandbox.assert.calledWithExactly(STS.prototype.assumeRole.getCall(0), {
+			sinon.assert.calledTwice(STS.prototype.assumeRole);
+			sinon.assert.calledWithExactly(STS.prototype.assumeRole.getCall(0), {
 				RoleArn: 'some-role-arn',
 				RoleSessionName: 'default-service',
 				DurationSeconds: 1800
 			});
-			sandbox.assert.calledWithExactly(STS.prototype.assumeRole.getCall(1), {
+			sinon.assert.calledWithExactly(STS.prototype.assumeRole.getCall(1), {
 				RoleArn: 'some-role-arn',
 				RoleSessionName: 'default-service',
 				DurationSeconds: 1800
@@ -179,11 +148,11 @@ describe('Log', () => {
 
 		it('Should send a log to Firehose with defaults values and not get credentials if there are no Role ARN ENV', async () => {
 
-			clearRoleEnvVars();
+			sinon.stub(process.env, 'LOG_ROLE_ARN').value('');
 
-			sandbox.spy(STS.prototype, 'assumeRole');
+			sinon.spy(STS.prototype, 'assumeRole');
 
-			sandbox.stub(Firehose.prototype, 'putRecordBatch')
+			sinon.stub(Firehose.prototype, 'putRecordBatch')
 				.resolves();
 
 			await Log.add('some-client', {
@@ -192,28 +161,28 @@ describe('Log', () => {
 				service: undefined
 			});
 
-			sandbox.assert.calledOnce(Firehose.prototype.putRecordBatch);
+			sinon.assert.calledOnce(Firehose.prototype.putRecordBatch);
 
 			const [{ Records }] = Firehose.prototype.putRecordBatch.lastCall.args;
 
 			const uploadedLog = JSON.parse(Records[0].Data.toString());
 
-			sandbox.assert.match(uploadedLog, {
+			sinon.assert.match(uploadedLog, {
 				...expectedLog,
-				id: sandbox.match.string,
+				id: sinon.match.string,
 				service: 'default-service',
 				dateCreated: new Date().toISOString()
 			});
 
-			sandbox.assert.notCalled(STS.prototype.assumeRole);
+			sinon.assert.notCalled(STS.prototype.assumeRole);
 		});
 
 		it('Should retry when Firehose fails', async () => {
 
-			sandbox.stub(STS.prototype, 'assumeRole')
+			sinon.stub(STS.prototype, 'assumeRole')
 				.resolves({ ...fakeRole, Expiration: new Date().toISOString() });
 
-			sandbox.stub(Firehose.prototype, 'putRecordBatch');
+			sinon.stub(Firehose.prototype, 'putRecordBatch');
 
 			Firehose.prototype.putRecordBatch.onFirstCall()
 				.rejects();
@@ -223,8 +192,8 @@ describe('Log', () => {
 
 			await Log.add('some-client', fakeLog);
 
-			sandbox.assert.calledTwice(Firehose.prototype.putRecordBatch);
-			sandbox.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {
+			sinon.assert.calledTwice(Firehose.prototype.putRecordBatch);
+			sinon.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {
 				DeliveryStreamName: 'JanisTraceFirehoseBeta',
 				Records: [
 					{
@@ -233,7 +202,7 @@ describe('Log', () => {
 				]
 			});
 
-			sandbox.assert.calledOnceWithExactly(STS.prototype.assumeRole, {
+			sinon.assert.calledOnceWithExactly(STS.prototype.assumeRole, {
 				RoleArn: 'some-role-arn',
 				RoleSessionName: 'default-service',
 				DurationSeconds: 1800
@@ -242,13 +211,12 @@ describe('Log', () => {
 
 		it('Should retry when Firehose fails and emit the create-error event when max retries reached', async () => {
 
-			clearStageEnvVars();
-			setStageEnvVars('qa');
+			sinon.stub(process.env, 'JANIS_ENV').value('qa');
 
-			sandbox.stub(STS.prototype, 'assumeRole')
+			sinon.stub(STS.prototype, 'assumeRole')
 				.resolves({ ...fakeRole, Expiration: new Date().toISOString() });
 
-			sandbox.stub(Firehose.prototype, 'putRecordBatch')
+			sinon.stub(Firehose.prototype, 'putRecordBatch')
 				.rejects();
 
 			let errorEmitted = false;
@@ -261,8 +229,8 @@ describe('Log', () => {
 
 			assert.deepEqual(errorEmitted, true);
 
-			sandbox.assert.calledThrice(Firehose.prototype.putRecordBatch);
-			sandbox.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {
+			sinon.assert.calledThrice(Firehose.prototype.putRecordBatch);
+			sinon.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {
 				DeliveryStreamName: 'JanisTraceFirehoseQA',
 				Records: [
 					{
@@ -271,7 +239,7 @@ describe('Log', () => {
 				]
 			});
 
-			sandbox.assert.calledOnceWithExactly(STS.prototype.assumeRole, {
+			sinon.assert.calledOnceWithExactly(STS.prototype.assumeRole, {
 				RoleArn: 'some-role-arn',
 				RoleSessionName: 'default-service',
 				DurationSeconds: 1800
@@ -280,51 +248,51 @@ describe('Log', () => {
 
 		it('Should not call Firehose putRecordBatch when ENV stage variable not exists', async () => {
 
-			clearStageEnvVars();
+			sinon.stub(process.env, 'JANIS_ENV').value('');
 
-			sandbox.stub(STS.prototype, 'assumeRole')
+			sinon.stub(STS.prototype, 'assumeRole')
 				.resolves(fakeRole);
 
-			sandbox.spy(Firehose.prototype, 'putRecordBatch');
+			sinon.spy(Firehose.prototype, 'putRecordBatch');
 
 			await Log.add('some-client', fakeLog);
 
-			sandbox.assert.notCalled(Firehose.prototype.putRecordBatch);
+			sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
 		});
 
 		it('Should not call Firehose putRecordBatch when ENV service variable not exists', async () => {
 
-			clearServiceEnvVars();
+			sinon.stub(process.env, 'JANIS_SERVICE_NAME').value('');
 
-			sandbox.spy(Firehose.prototype, 'putRecordBatch');
+			sinon.spy(Firehose.prototype, 'putRecordBatch');
 
 			await Log.add('some-client', { ...fakeLog, service: undefined });
 
-			sandbox.assert.notCalled(Firehose.prototype.putRecordBatch);
+			sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
 		});
 
 		it('Should not call Firehose putRecordBatch when assume role rejects', async () => {
 
-			sandbox.stub(STS.prototype, 'assumeRole')
+			sinon.stub(STS.prototype, 'assumeRole')
 				.rejects();
 
-			sandbox.spy(Firehose.prototype, 'putRecordBatch');
+			sinon.spy(Firehose.prototype, 'putRecordBatch');
 
 			await Log.add('some-client', fakeLog);
 
-			sandbox.assert.notCalled(Firehose.prototype.putRecordBatch);
+			sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
 		});
 
 		it('Should not call Firehose putRecordBatch when assume role returns an invalid result', async () => {
 
-			sandbox.stub(STS.prototype, 'assumeRole')
+			sinon.stub(STS.prototype, 'assumeRole')
 				.resolves(null);
 
-			sandbox.spy(Firehose.prototype, 'putRecordBatch');
+			sinon.spy(Firehose.prototype, 'putRecordBatch');
 
 			await Log.add('some-client', fakeLog);
 
-			sandbox.assert.notCalled(Firehose.prototype.putRecordBatch);
+			sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
 		});
 
 		context('When the received log is invalid', () => {
@@ -344,13 +312,13 @@ describe('Log', () => {
 
 				it('Should throw and not try to send the log to Firehose', async () => {
 
-					sandbox.spy(STS.prototype, 'assumeRole');
-					sandbox.spy(Firehose.prototype, 'putRecordBatch');
+					sinon.spy(STS.prototype, 'assumeRole');
+					sinon.spy(Firehose.prototype, 'putRecordBatch');
 
 					await Log.add('some-client', log);
 
-					sandbox.assert.notCalled(STS.prototype.assumeRole);
-					sandbox.assert.notCalled(Firehose.prototype.putRecordBatch);
+					sinon.assert.notCalled(STS.prototype.assumeRole);
+					sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
 				});
 			});
 		});
@@ -361,7 +329,7 @@ describe('Log', () => {
 
 		it('Should return the serverless hooks', () => {
 
-			sandbox.stub(Settings, 'get').returns('logArnSource');
+			sinon.stub(Settings, 'get').returns('logArnSource');
 
 			assert.deepStrictEqual(Log.serverlessConfiguration, [
 				['envVars', {
@@ -372,7 +340,7 @@ describe('Log', () => {
 				}]
 			]);
 
-			sandbox.assert.calledOnceWithExactly(Settings.get, 'logRoleArn');
+			sinon.assert.calledOnceWithExactly(Settings.get, 'logRoleArn');
 		});
 	});
 });

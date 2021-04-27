@@ -1,0 +1,31 @@
+name: NPM Publish
+
+on:
+  push:
+    tags:
+      - '**'
+
+jobs:
+  publish-npm:
+
+    name: Publish to npm
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js 12.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: 12.x
+          registry-url: https://registry.npmjs.org/
+      - name: Install dependencies
+        run: npm install
+      - name: Run tests
+        run: npm run test
+      - name: Lint code
+        run: npm run lint
+      - name: Build types
+        run: npm run build-types
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.npm_token}}

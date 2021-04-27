@@ -57,6 +57,30 @@ The `log [Object]` parameter have the following structure:
 Parameters: `event [String]`, `callback [Function]`
 Calls a callback when the specified event is emitted.
 
+### **`createTracker(clientCode)`**
+Parameters: `clientCode [String]``
+Create a new tracker to build an incremental log. It returns a [LogTracker](#log-tracker) instance
+
+## Log Tracker
+
+A log tracker is an object used to build an incremental log to track multiple states of a process. For example, if when you publish a product you can track the initial state of the product, then request that will be made and the response received. Finally you save everything in a log to keep track for debugging purposes.
+
+To use a log tracker, you have to call the `Log.createTracker()` method, which will return an instance of a tracker.
+Then you can make as much calls to `logTracker.add()` as you want.
+When you're ready to save the log, simply call the `logTracker.log()` method.
+
+Each time you call the `log()` method, the internal state is reset so you can re-use the instance in case you want to.
+
+See the Log Tracker API below:
+
+### **`add(name, data)`**
+Parameters: `name [String]`, `data [Object]`
+Saves the `data` object associated with a `name` that explains what it is.
+
+### **`log(logData)`**
+Parameters: `logData [LogData]`.
+Saves the log with the properties passed as LogData. These are the same that are passed to `Log.add()`, except for the `log` property that will be overriden.
+
 ## Errors
 
 The errors are informed with a `LogError`.
@@ -146,8 +170,28 @@ await Log.add('some-client', [
   }
 ]);
 
+// Log creation error handling
 Log.on('create-error', (log, err) => {
 	console.error(`An error occurred while creating the log ${err.message}`);
+});
+
+// Incremental logs, during a map-reduce operation
+const logTracker = Log.createTracker('some-client');
+
+const numbers = [1, 2, 3];
+logTracker.add('initialState', numbers);
+
+const doubledNumbers = numbers.map(n => n * 2);
+logTracker.add('intermediateState', doubledNumbers);
+
+const sum = doubledNumbers.reduce((total, n) => total + n, 0);
+logTracker.add('finalState', sum);
+
+await logTracker.log({
+  entity: 'math',
+  entityId: 'someId',
+  type: 'map-reduce',
+  message: 'Map reduced to sum the double of some numbers'
 });
 ```
 
