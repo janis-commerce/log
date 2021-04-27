@@ -1,7 +1,8 @@
 # log
 
-[![Build Status](https://travis-ci.org/janis-commerce/log.svg?branch=master)](https://travis-ci.org/janis-commerce/log)
+![Build Status](https://github.com/janis-commerce/log/workflows/Build%20Status/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/janis-commerce/log/badge.svg?branch=master)](https://coveralls.io/github/janis-commerce/log?branch=master)
+[![npm version](https://badge.fury.io/js/%40janiscommerce%2Flog.svg)](https://www.npmjs.com/package/@janiscommerce/log)
 
 A package for creating logs in Firehose
 
