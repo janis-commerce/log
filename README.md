@@ -58,7 +58,7 @@ Parameters: `event [String]`, `callback [Function]`
 Calls a callback when the specified event is emitted.
 
 ### **`createTracker(clientCode)`**
-Parameters: `clientCode [String]``
+Parameters: `clientCode [String]`
 Create a new tracker to build an incremental log. It returns a [LogTracker](#log-tracker) instance
 
 ## Log Tracker
