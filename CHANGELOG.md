@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [3.4.0] - 2021-04-27
+### Added
+- `Log.createTracker()` to generate an incremental log
+- TS typings
+
+### Changed
+- CI is now done using github actions
+
 ## [3.3.0] - 2020-07-29
 ### Added
 - serverlessConfiguration getter to easily get sls hooks.
