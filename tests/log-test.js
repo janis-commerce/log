@@ -17,6 +17,7 @@ describe('Log', () => {
 		entity: 'some-entity',
 		entityId: 'some-entity_id',
 		message: 'some-message',
+		userCreated: '608c1589c063516b506fce19',
 		log: {
 			some: 'log'
 		}
@@ -30,7 +31,8 @@ describe('Log', () => {
 		type: fakeLog.type,
 		log: JSON.stringify(fakeLog.log),
 		message: fakeLog.message,
-		client: 'some-client'
+		client: 'some-client',
+		userCreated: fakeLog.userCreated
 	};
 
 	const fakeRole = {
@@ -158,7 +160,8 @@ describe('Log', () => {
 			await Log.add('some-client', {
 				...fakeLog,
 				id: undefined,
-				service: undefined
+				service: undefined,
+				userCreated: null
 			});
 
 			sinon.assert.calledOnce(Firehose.prototype.putRecordBatch);
@@ -167,8 +170,10 @@ describe('Log', () => {
 
 			const uploadedLog = JSON.parse(Records[0].Data.toString());
 
+			const { userCreated, ...restOfLog } = expectedLog;
+
 			sinon.assert.match(uploadedLog, {
-				...expectedLog,
+				...restOfLog,
 				id: sinon.match.string,
 				service: 'default-service',
 				dateCreated: new Date().toISOString()
@@ -211,7 +216,8 @@ describe('Log', () => {
 
 		it('Should retry when Firehose fails and emit the create-error event when max retries reached', async () => {
 
-			sinon.stub(process.env, 'JANIS_ENV').value('qa');
+			sinon.stub(process.env, 'JANIS_ENV')
+				.value('qa');
 
 			sinon.stub(STS.prototype, 'assumeRole')
 				.resolves({ ...fakeRole, Expiration: new Date().toISOString() });
@@ -227,7 +233,7 @@ describe('Log', () => {
 
 			await Log.add('some-client', { ...fakeLog, log: undefined });
 
-			assert.deepEqual(errorEmitted, true);
+			assert.deepStrictEqual(errorEmitted, true);
 
 			sinon.assert.calledThrice(Firehose.prototype.putRecordBatch);
 			sinon.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [3.4.1] - 2021-05-10
+### Fixed
+- Fixed TS `readonly` methods
+- `userCreated` now supports **null** value
+
 ## [3.4.0] - 2021-04-27
 ### Added
 - `Log.createTracker()` to generate an incremental log
