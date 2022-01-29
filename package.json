@@ -1,6 +1,6 @@
 {
   "name": "@janiscommerce/log",
-  "version": "3.4.1",
+  "version": "3.4.2",
   "description": "A package for creating logs in Firehose",
   "main": "lib/index.js",
   "scripts": {
