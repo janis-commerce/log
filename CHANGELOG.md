@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [3.4.2] - 2022-01-29
 ### Changed
-- AWS SDK require now requires only SecretsManager client
+- AWS SDK require now requires only STS and Firehose client
 
 ## [3.4.1] - 2021-05-10
 ### Fixed
