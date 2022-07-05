@@ -23,15 +23,15 @@ describe('Log', () => {
 		}
 	};
 
-	const expectedLog = {
-		id: 'some-id',
-		service: 'some-service',
+	const expectedLog = { // the order of fields are important to verify data
+		id: fakeLog.id,
+		service: fakeLog.service,
 		entity: fakeLog.entity,
 		entityId: fakeLog.entityId,
 		type: fakeLog.type,
-		log: JSON.stringify(fakeLog.log),
 		message: fakeLog.message,
 		client: 'some-client',
+		log: JSON.stringify(fakeLog.log),
 		userCreated: fakeLog.userCreated
 	};
 
@@ -195,8 +195,6 @@ describe('Log', () => {
 			Firehose.prototype.putRecordBatch.onSecondCall()
 				.resolves();
 
-			console.log(typeof expectedLog.log);
-
 			await Log.add('some-client', fakeLog);
 
 			sinon.assert.calledTwice(Firehose.prototype.putRecordBatch);
@@ -216,7 +214,7 @@ describe('Log', () => {
 			});
 		});
 
-		it.only('Should retry when Firehose fails and emit the create-error event when max retries reached', async () => {
+		it('Should retry when Firehose fails and emit the create-error event when max retries reached', async () => {
 
 			sinon.stub(process.env, 'JANIS_ENV')
 				.value('qa');
@@ -233,18 +231,16 @@ describe('Log', () => {
 				errorEmitted = true;
 			});
 
-			await Log.add('some-client', { ...fakeLog, log: { a: 1 } });
+			await Log.add('some-client', { ...fakeLog, log: undefined });
 
 			assert.deepStrictEqual(errorEmitted, true);
-
-			console.log(JSON.stringify({ ...expectedLog, dateCreated: new Date(), log: JSON.stringify({ a: 1 }) }));
 
 			sinon.assert.calledThrice(Firehose.prototype.putRecordBatch);
 			sinon.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {
 				DeliveryStreamName: 'JanisTraceFirehoseQA',
 				Records: [
 					{
-						Data: Buffer.from(JSON.stringify({ ...expectedLog, dateCreated: new Date(), log: JSON.stringify({ a: 1 }) }))
+						Data: Buffer.from(JSON.stringify({ ...expectedLog, log: undefined, dateCreated: new Date() }))
 					}
 				]
 			});
