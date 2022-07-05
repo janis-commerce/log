@@ -1,0 +1,11 @@
+{
+	"id": "string&!empty",
+	"service": "string&!empty",
+	"entity": "string&!empty",
+	"entityId": "string?|number?",
+	"type": "string&!empty",
+	"log": "object?|array?",
+	"message": "string?",
+	"client": "string&!empty",
+	"userCreated": "string?|null?"
+}

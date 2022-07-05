@@ -1,15 +1,16 @@
 {
   "name": "@janiscommerce/log",
   "version": "3.4.2",
-  "description": "A package for creating logs in Firehose",
+  "description": "A package for creating logs in Janis Trace Service",
   "main": "lib/index.js",
   "scripts": {
     "test": "export TEST_ENV=true; mocha --exit -R nyan --recursive tests/ --require tests/bootstrap",
-    "coverage-ci": "nyc --reporter=lcov --reporter=text-summary mocha --exit --recursive tests/",
+    "test-ci": "nyc --reporter=lcov --reporter=text-summary mocha --exit --recursive tests/",
     "watch-test": "export TEST_ENV=true; mocha --exit -R nyan -w --recursive tests/ --require tests/bootstrap",
     "coverage": "nyc npm test",
     "lint": "eslint lib/ tests/",
-    "build-types": "tsc lib/index.js --declaration --allowJs --emitDeclarationOnly --outDir types"
+    "build-types": "tsc lib/index.js --declaration --allowJs --emitDeclarationOnly --outDir types",
+    "prepare": "husky install"
   },
   "repository": {
     "type": "git",
@@ -20,13 +21,13 @@
   "homepage": "https://github.com/janis-commerce/log.git#readme",
   "devDependencies": {
     "@types/node": "^15.0.0",
-    "eslint": "^7.5.0",
-    "eslint-config-airbnb-base": "^13.1.0",
-    "eslint-plugin-import": "^2.20.2",
-    "husky": "^4.2.5",
-    "mocha": "^7.1.1",
+    "eslint": "^7.32.0",
+    "eslint-config-airbnb-base": "^13.2.0",
+    "eslint-plugin-import": "^2.26.0",
+    "husky": "^8.0.1",
+    "mocha": "^10.0.0",
     "nyc": "^15.1.0",
-    "sinon": "^9.0.2",
+    "sinon": "^14.0.0",
     "typescript": "^4.2.4"
   },
   "files": [
@@ -38,9 +39,9 @@
     "test": "tests"
   },
   "dependencies": {
-    "@janiscommerce/api-session": "^3.2.0",
+    "@janiscommerce/api-session": "^3.3.1",
     "@janiscommerce/settings": "^1.0.1",
-    "@janiscommerce/superstruct": "^1.1.1",
+    "@janiscommerce/superstruct": "^1.2.0",
     "aws-sdk": "^2.498.0",
     "uuid": "7.0.3"
   }

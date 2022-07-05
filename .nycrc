@@ -1,10 +1,6 @@
 {
-  "exclude": [
-    "coverages/",
-    "tests/",
-    "mocks/",
-    ".eslintrc.js",
-    ".travis.yml"
+  "include": [
+    "lib/"
   ],
   "extension": [
     ".js"
@@ -13,6 +9,7 @@
   "all": true,
   "default-excludes": true,
   "check-coverage": true,
+  "skip-full": true,
   "statements": 95,
   "branches": 95,
   "functions": 95,
