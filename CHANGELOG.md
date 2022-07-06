@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [3.5.0] - 2022-07-06
+### Added
+- Now `log` includes fields `functionName` and `apiRequestLogId` with value of env vars `JANIS_FUNCTION_NAME` and `JANIS_API_REQUEST_LOG_ID`
+
+### Changed
+- Now `log` field on each **Log** is an _Object_, transformed into an object when _Array_ received
+
 ## [3.4.2] - 2022-01-29
 ### Changed
 - AWS SDK require now requires only STS and Firehose client
