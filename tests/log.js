@@ -54,8 +54,14 @@ describe('Log', () => {
 	const formatLog = (rawLog, client, functionName, apiRequestLogId) => {
 
 		const {
-			id, service, entity, entityId, type, message, userCreated, log
+			id, service, entity, entityId, type, message, userCreated
 		} = rawLog;
+
+		const log = {
+			...functionName && { functionName },
+			...apiRequestLogId && { apiRequestLogId },
+			...rawLog.log
+		};
 
 		const formattedLog = {
 			id,
@@ -65,16 +71,10 @@ describe('Log', () => {
 			type,
 			message,
 			client,
-			log: JSON.stringify({
-				...functionName && { functionName },
-				...apiRequestLogId && { apiRequestLogId },
-				...log
-			}),
+			...Object.keys(log).length && { log: JSON.stringify(log) },
 			...userCreated !== null && { userCreated },
 			dateCreated: new Date().toISOString()
 		};
-
-		// console.log(formattedLog);
 
 		return { Data: Buffer.from(JSON.stringify(formattedLog)) };
 	};
@@ -315,6 +315,49 @@ describe('Log', () => {
 
 				assertAssumeRole();
 			});
+
+			it('Should send log to Firehouse with empty log', async () => {
+
+				stubAssumeRole();
+
+				sinon.stub(Firehose.prototype, 'putRecordBatch')
+					.resolves();
+
+				const { log, ...logWithoutLog } = sampleLog;
+
+				await Log.add('some-client', logWithoutLog);
+
+				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
+					DeliveryStreamName: 'JanisTraceFirehoseBeta',
+					Records: [
+						formatLog(logWithoutLog, 'some-client')
+					]
+				});
+
+				assertAssumeRole();
+			});
+
+			it('Should send log to Firehouse with formatted log field as object when an array was received', async () => {
+
+				stubAssumeRole();
+
+				sinon.stub(Firehose.prototype, 'putRecordBatch')
+					.resolves();
+
+				await Log.add('some-client', {
+					...sampleLog,
+					log: [sampleLog.log]
+				});
+
+				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
+					DeliveryStreamName: 'JanisTraceFirehoseBeta',
+					Records: [
+						formatLog({ ...sampleLog, log: { data: [sampleLog.log] } }, 'some-client')
+					]
+				});
+
+				assertAssumeRole();
+			});
 		});
 
 		context('When Firehouse fails', () => {
@@ -410,6 +453,13 @@ describe('Log', () => {
 			]);
 
 			sinon.assert.calledOnceWithExactly(Settings.get, 'logRoleArn');
+		});
+	});
+
+	describe('Deprecated method on()', () => {
+
+		it('Should call the method without making anything', () => {
+			Log.on();
 		});
 	});
 });
