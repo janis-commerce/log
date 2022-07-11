@@ -69,7 +69,9 @@ The codes are the following:
 |------|--------------------------------|
 | 1    | Invalid log                    |
 | 2    | Firehose Error                 |
-| 3    | Unknown stage name             |
+| 4    | Assuming STS role error        |
+
+- Error `code: 3` removed since _3.5.1_
 
 ## Usage
 

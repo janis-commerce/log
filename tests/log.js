@@ -7,7 +7,6 @@ const Settings = require('@janiscommerce/settings');
 const { STS, Firehose } = require('../lib/aws-wrappers');
 
 const Log = require('../lib/log');
-const LogError = require('../lib/log-error');
 const FirehoseInstance = require('../lib/firehose-instance');
 
 describe('Log', () => {
@@ -113,15 +112,6 @@ describe('Log', () => {
 				await Log.add('some-client', sampleLog);
 			});
 
-			it('Should reject and not call Firehose putRecordBatch when ENV stage variable is invalid', async () => {
-
-				process.env.JANIS_ENV = 'invalid-env';
-
-				await assert.rejects(Log.add('some-client', sampleLog), {
-					name: 'LogError',
-					code: LogError.codes.NO_ENVIRONMENT
-				});
-			});
 		});
 
 		context('When the received log is invalid', () => {
