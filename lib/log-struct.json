@@ -2,11 +2,11 @@
 	"id": "UUID&!empty",
 	"service": "string&!empty",
 	"entity": "string&!empty",
-	"entityId": "string?|number?",
+	"entityId": "string|number?",
 	"type": "string&!empty",
 	"message": "string?",
 	"client": "string&!empty",
-	"userCreated": "string?|null?",
+	"userCreated": "string|null?",
 	"dateCreated": "ISODate|null?",
-	"log": "object?|array?"
+	"log": "string|object|array?"
 }

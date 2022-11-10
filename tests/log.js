@@ -578,17 +578,21 @@ describe('Log', () => {
 			sinon.stub(Firehose.prototype, 'putRecordBatch')
 				.resolves();
 
-			const { service, userCreated, ...minimalLog } = sampleLog;
+			const { service, userCreated, log, ...minimalLog } = sampleLog;
 
 			const expectedLog = {
 				...minimalLog,
+				log,
 				client: 'some-client',
-				service: 'default-service' // from env
+				service: 'default-service', // from env
+				dateCreated: '2022-11-10T17:05:17.539Z'
 			};
 
 			await Log.sendToTrace([{
 				...minimalLog,
-				client: 'some-client'
+				log: JSON.stringify(log),
+				client: 'some-client',
+				dateCreated: '2022-11-10T17:05:17.539Z'
 			}]);
 
 			sinon.assert.notCalled(axios.post);
@@ -618,20 +622,24 @@ describe('Log', () => {
 			sinon.stub(Firehose.prototype, 'putRecordBatch')
 				.resolves();
 
-			const { service, userCreated, ...minimalLog } = sampleLog;
+			const { service, userCreated, log, ...minimalLog } = sampleLog;
 
 			const expectedLog = {
 				...minimalLog,
+				log,
 				client: 'some-client',
-				service: 'default-service' // from env
+				service: 'default-service', // from env
+				dateCreated: '2022-11-10T17:05:17.539Z'
 			};
 
 			await Log.sendToTrace([{
 				...minimalLog,
-				client: 'some-client'
-			}], {
+				log: JSON.stringify(log),
+				client: 'some-client',
+				dateCreated: '2022-11-10T17:05:17.539Z'
+			}, {
 				invalidLog: true
-			});
+			}]);
 
 			sinon.assert.notCalled(axios.post);
 
