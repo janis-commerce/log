@@ -524,7 +524,7 @@ describe('Log', () => {
 
 				await Log.add('some-client', minimalLog);
 
-				sinon.assert.calledOnceWithExactly(axios.post, 'http://127.0.01:8585/logs', { logs: [formatLog(expectedLog, 'some-client')] }, { timeout: 300 });
+				sinon.assert.calledOnceWithExactly(axios.post, 'http://127.0.0.1:8585/logs', { logs: [formatLog(expectedLog, 'some-client')] }, { timeout: 300 });
 
 				sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
 			});
@@ -549,7 +549,7 @@ describe('Log', () => {
 
 				await Log.add('some-client', minimalLog);
 
-				sinon.assert.calledOnceWithExactly(axios.post, 'http://127.0.01:8585/logs', { logs: [formatLog(expectedLog, 'some-client')] }, { timeout: 300 });
+				sinon.assert.calledOnceWithExactly(axios.post, 'http://127.0.0.1:8585/logs', { logs: [formatLog(expectedLog, 'some-client')] }, { timeout: 300 });
 
 				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
 					DeliveryStreamName: 'JanisTraceFirehoseBeta',
