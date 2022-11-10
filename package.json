@@ -43,6 +43,7 @@
     "@janiscommerce/settings": "^1.0.1",
     "@janiscommerce/superstruct": "^1.2.0",
     "aws-sdk": "^2.498.0",
+    "axios": "^0.27.2",
     "lllog": "^1.1.2",
     "uuid": "7.0.3"
   }

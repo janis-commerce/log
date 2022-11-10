@@ -3,6 +3,7 @@
 const assert = require('assert');
 const sinon = require('sinon');
 const Settings = require('@janiscommerce/settings');
+const { default: axios } = require('axios');
 
 const { STS, Firehose } = require('../lib/aws-wrappers');
 
@@ -51,9 +52,8 @@ describe('Log', () => {
 	});
 
 	const formatLog = (rawLog, client, functionName, apiRequestLogId) => {
-
 		const {
-			id, service, entity, entityId, type, message, userCreated
+			id, service, entity, entityId, type, message, dateCreated, userCreated
 		} = rawLog;
 
 		const log = {
@@ -72,8 +72,15 @@ describe('Log', () => {
 			client,
 			...Object.keys(log).length && { log: JSON.stringify(log) },
 			...userCreated !== null && { userCreated },
-			dateCreated: new Date().toISOString()
+			dateCreated: dateCreated || new Date().toISOString()
 		};
+
+		return formattedLog;
+	};
+
+	const formatLogForFirehose = (rawLog, client, functionName, apiRequestLogId) => {
+
+		const formattedLog = formatLog(rawLog, client, functionName, apiRequestLogId);
 
 		return { Data: Buffer.from(JSON.stringify(formattedLog)) };
 	};
@@ -164,14 +171,19 @@ describe('Log', () => {
 
 				sinon.assert.calledThrice(Firehose.prototype.putRecordBatch);
 
-				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch, { // 2 times
+				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(0), {
 					DeliveryStreamName: 'JanisTraceFirehoseBeta',
-					Records: Array(500).fill(formatLog(sampleLog, 'some-client'))
+					Records: Array(500).fill(formatLogForFirehose(sampleLog, 'some-client'))
 				});
 
-				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch, { // last batch
+				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(1), {
 					DeliveryStreamName: 'JanisTraceFirehoseBeta',
-					Records: Array(250).fill(formatLog(sampleLog, 'some-client'))
+					Records: Array(500).fill(formatLogForFirehose(sampleLog, 'some-client'))
+				});
+
+				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(2), { // last batch
+					DeliveryStreamName: 'JanisTraceFirehoseBeta',
+					Records: Array(250).fill(formatLogForFirehose(sampleLog, 'some-client'))
 				});
 
 				assertAssumeRole();
@@ -193,7 +205,7 @@ describe('Log', () => {
 				['some-client', 'other-client'].forEach(client => {
 					sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch, {
 						DeliveryStreamName: 'JanisTraceFirehoseBeta',
-						Records: [formatLog(sampleLog, client)]
+						Records: [formatLogForFirehose(sampleLog, client)]
 					});
 				});
 
@@ -236,7 +248,7 @@ describe('Log', () => {
 
 				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
 					DeliveryStreamName: 'JanisTraceFirehoseBeta',
-					Records: [formatLog(sampleLog, 'some-client')]
+					Records: [formatLogForFirehose(sampleLog, 'some-client')]
 				});
 
 				sinon.assert.notCalled(STS.prototype.assumeRole);
@@ -261,7 +273,64 @@ describe('Log', () => {
 
 				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
 					DeliveryStreamName: 'JanisTraceFirehoseBeta',
-					Records: [formatLog(expectedLog, 'some-client')]
+					Records: [formatLogForFirehose(expectedLog, 'some-client')]
+				});
+
+				assertAssumeRole();
+			});
+
+			it('Should send only the valid logs to Firehose if there are some invalid ones', async () => {
+
+				sinon.stub(STS.prototype, 'assumeRole')
+					.resolves({ ...role, Expiration: new Date().toISOString() });
+
+				sinon.stub(Firehose.prototype, 'putRecordBatch')
+					.resolves();
+
+				const { service, userCreated, ...minimalLog } = sampleLog;
+
+				const expectedLog = {
+					...minimalLog,
+					service: 'default-service' // from env
+				};
+
+				await Log.add('some-client', [
+					minimalLog,
+					{ invalidLog: true }
+				]);
+
+				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
+					DeliveryStreamName: 'JanisTraceFirehoseBeta',
+					Records: [formatLogForFirehose(expectedLog, 'some-client')]
+				});
+
+				assertAssumeRole();
+			});
+
+			it('Should send log to Firehose with predefined dateCreated if it is received', async () => {
+
+				sinon.stub(STS.prototype, 'assumeRole')
+					.resolves({ ...role, Expiration: new Date().toISOString() });
+
+				sinon.stub(Firehose.prototype, 'putRecordBatch')
+					.resolves();
+
+				const { service, userCreated, ...minimalLog } = sampleLog;
+
+				const expectedLog = {
+					...minimalLog,
+					service: 'default-service', // from env
+					dateCreated: '2022-11-10T14:00:00.000Z'
+				};
+
+				await Log.add('some-client', {
+					...minimalLog,
+					dateCreated: new Date('2022-11-10T14:00:00.000Z')
+				});
+
+				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
+					DeliveryStreamName: 'JanisTraceFirehoseBeta',
+					Records: [formatLogForFirehose(expectedLog, 'some-client')]
 				});
 
 				assertAssumeRole();
@@ -280,7 +349,7 @@ describe('Log', () => {
 
 				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
 					DeliveryStreamName: 'JanisTraceFirehoseBeta',
-					Records: [formatLog(sampleLog, 'some-client', 'UpdateProduct')]
+					Records: [formatLogForFirehose(sampleLog, 'some-client', 'UpdateProduct')]
 				});
 
 				assertAssumeRole();
@@ -300,7 +369,7 @@ describe('Log', () => {
 
 				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
 					DeliveryStreamName: 'JanisTraceFirehoseBeta',
-					Records: [formatLog(sampleLog, 'some-client', null, apiRequestLogId)]
+					Records: [formatLogForFirehose(sampleLog, 'some-client', null, apiRequestLogId)]
 				});
 
 				assertAssumeRole();
@@ -320,7 +389,7 @@ describe('Log', () => {
 				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
 					DeliveryStreamName: 'JanisTraceFirehoseBeta',
 					Records: [
-						formatLog(logWithoutLog, 'some-client')
+						formatLogForFirehose(logWithoutLog, 'some-client')
 					]
 				});
 
@@ -342,7 +411,7 @@ describe('Log', () => {
 				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
 					DeliveryStreamName: 'JanisTraceFirehoseBeta',
 					Records: [
-						formatLog({ ...sampleLog, log: { data: [sampleLog.log] } }, 'some-client')
+						formatLogForFirehose({ ...sampleLog, log: { data: [sampleLog.log] } }, 'some-client')
 					]
 				});
 
@@ -365,7 +434,7 @@ describe('Log', () => {
 
 				sinon.stub(Firehose.prototype, 'putRecordBatch')
 					.onFirstCall()
-					.rejects()
+					.rejects(new Error('Fail to put records'))
 					.onSecondCall()
 					.resolves();
 
@@ -375,7 +444,7 @@ describe('Log', () => {
 
 				sinon.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {
 					DeliveryStreamName: 'JanisTraceFirehoseBeta',
-					Records: [formatLog(sampleLog, 'some-client')]
+					Records: [formatLogForFirehose(sampleLog, 'some-client')]
 				});
 			});
 
@@ -384,7 +453,7 @@ describe('Log', () => {
 				process.env.JANIS_ENV = 'qa';
 
 				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.rejects();
+					.rejects(new Error('Fail to put records'));
 
 				await Log.add('some-client', sampleLog);
 
@@ -392,7 +461,7 @@ describe('Log', () => {
 
 				sinon.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {
 					DeliveryStreamName: 'JanisTraceFirehoseQA',
-					Records: [formatLog(sampleLog, 'some-client')]
+					Records: [formatLogForFirehose(sampleLog, 'some-client')]
 				});
 			});
 
@@ -411,7 +480,7 @@ describe('Log', () => {
 			it('Should not call Firehose putRecordBatch when STS rejects', async () => {
 
 				sinon.stub(STS.prototype, 'assumeRole')
-					.rejects();
+					.rejects(new Error('Fail to assume role'));
 
 				await Log.add('some-client', sampleLog);
 			});
@@ -423,6 +492,186 @@ describe('Log', () => {
 
 				await Log.add('some-client', sampleLog);
 			});
+		});
+
+		context('When local log batch is enabled', () => {
+
+			beforeEach(() => {
+				sinon.stub(process, 'env')
+					.value({
+						...process.env,
+						JANIS_TRACE_EXTENSION_ENABLED: 'true'
+					});
+			});
+
+			it('Should send logs to extension local server', async () => {
+
+				sinon.stub(axios, 'post')
+					.resolves();
+
+				sinon.stub(STS.prototype, 'assumeRole')
+					.resolves({ ...role, Expiration: new Date().toISOString() });
+
+				sinon.stub(Firehose.prototype, 'putRecordBatch')
+					.resolves();
+
+				const { service, userCreated, ...minimalLog } = sampleLog;
+
+				const expectedLog = {
+					...minimalLog,
+					service: 'default-service' // from env
+				};
+
+				await Log.add('some-client', minimalLog);
+
+				sinon.assert.calledOnceWithExactly(axios.post, 'http://127.0.01:8585/logs', { logs: [formatLog(expectedLog, 'some-client')] }, { timeout: 300 });
+
+				sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
+			});
+
+			it('Should send logs to Firehose if extension local server fails', async () => {
+
+				sinon.stub(axios, 'post')
+					.rejects(new Error('Failed to save logs'));
+
+				sinon.stub(STS.prototype, 'assumeRole')
+					.resolves({ ...role, Expiration: new Date().toISOString() });
+
+				sinon.stub(Firehose.prototype, 'putRecordBatch')
+					.resolves();
+
+				const { service, userCreated, ...minimalLog } = sampleLog;
+
+				const expectedLog = {
+					...minimalLog,
+					service: 'default-service' // from env
+				};
+
+				await Log.add('some-client', minimalLog);
+
+				sinon.assert.calledOnceWithExactly(axios.post, 'http://127.0.01:8585/logs', { logs: [formatLog(expectedLog, 'some-client')] }, { timeout: 300 });
+
+				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
+					DeliveryStreamName: 'JanisTraceFirehoseBeta',
+					Records: [formatLogForFirehose(expectedLog, 'some-client')]
+				});
+			});
+		});
+	});
+
+	describe('sendToTrace', () => {
+
+		it('Should send logs to Firehose, even if trace extension env var is set', async () => {
+
+			sinon.stub(process, 'env')
+				.value({
+					...process.env,
+					JANIS_TRACE_EXTENSION_ENABLED: 'true'
+				});
+
+			sinon.stub(axios, 'post')
+				.resolves();
+
+			sinon.stub(STS.prototype, 'assumeRole')
+				.resolves({ ...role, Expiration: new Date().toISOString() });
+
+			sinon.stub(Firehose.prototype, 'putRecordBatch')
+				.resolves();
+
+			const { service, userCreated, ...minimalLog } = sampleLog;
+
+			const expectedLog = {
+				...minimalLog,
+				client: 'some-client',
+				service: 'default-service' // from env
+			};
+
+			await Log.sendToTrace([{
+				...minimalLog,
+				client: 'some-client'
+			}]);
+
+			sinon.assert.notCalled(axios.post);
+
+			sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
+				DeliveryStreamName: 'JanisTraceFirehoseBeta',
+				Records: [formatLogForFirehose(expectedLog, 'some-client')]
+			});
+
+			assertAssumeRole();
+		});
+
+		it('Should send only the valid logs to Firehose, ignoring the invalid ones', async () => {
+
+			sinon.stub(process, 'env')
+				.value({
+					...process.env,
+					JANIS_TRACE_EXTENSION_ENABLED: 'true'
+				});
+
+			sinon.stub(axios, 'post')
+				.resolves();
+
+			sinon.stub(STS.prototype, 'assumeRole')
+				.resolves({ ...role, Expiration: new Date().toISOString() });
+
+			sinon.stub(Firehose.prototype, 'putRecordBatch')
+				.resolves();
+
+			const { service, userCreated, ...minimalLog } = sampleLog;
+
+			const expectedLog = {
+				...minimalLog,
+				client: 'some-client',
+				service: 'default-service' // from env
+			};
+
+			await Log.sendToTrace([{
+				...minimalLog,
+				client: 'some-client'
+			}], {
+				invalidLog: true
+			});
+
+			sinon.assert.notCalled(axios.post);
+
+			sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
+				DeliveryStreamName: 'JanisTraceFirehoseBeta',
+				Records: [formatLogForFirehose(expectedLog, 'some-client')]
+			});
+
+			assertAssumeRole();
+		});
+
+		it('Should not call Firehose if all logs are invalid', async () => {
+
+			sinon.stub(process, 'env')
+				.value({
+					...process.env,
+					JANIS_TRACE_EXTENSION_ENABLED: 'true'
+				});
+
+			sinon.stub(axios, 'post')
+				.resolves();
+
+			sinon.stub(STS.prototype, 'assumeRole')
+				.resolves({ ...role, Expiration: new Date().toISOString() });
+
+			sinon.stub(Firehose.prototype, 'putRecordBatch')
+				.resolves();
+
+			const { service, userCreated, ...minimalLog } = sampleLog;
+
+			await Log.sendToTrace([{
+				...minimalLog,
+				client: ['invalid']
+			}], {
+				invalidLog: true
+			});
+
+			sinon.assert.notCalled(axios.post);
+
+			sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
 		});
 	});
 

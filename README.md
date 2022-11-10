@@ -16,21 +16,24 @@ npm install @janiscommerce/log
 **`JANIS_SERVICE_NAME`** (required): The name of the service that will create the log.
 **`JANIS_ENV`** (required): The stage name that will used as prefix for trace firehose delivery stream.
 **`LOG_ROLE_ARN`** (required): The ARN to assume the trace role in order to put records in Firehose.
+**`JANIS_TRACE_EXTENSION_ENABLED`**: If this variable is set, logs will be attempted to be buffered in the Janis Trace Extension server. If the server fails, direct call to Firehose is the fallback.
 
 ## API
 ### **`add(clientCode, logs)`**
 Parameters: `clientCode [String]`, `logs [Object] or [Object array]`
-Puts the received log or logs into the janis-trace-firehose
+Puts the received log or logs into the janis-trace-firehose or local server
 
 ### Log structure
 The `log [Object]` parameter have the following structure:
 - **`id [String]`** (optional): The ID of the log in UUID V4 format. Default will be auto-generated.
+- **`client [String]`** (optional): The client code of the log owner. If set, this overrides the `clientCode` parameter of the `add()` method.
 - **`service [String]`** (optional): The service name, if this field not exists, will be obtained from the ENV (**`JANIS_SERVICE_NAME`**)
 - **`entity [String]`** (required): The name of the entity that is creating the log.
 - **`entityId [String]`** (optional): The ID of the entity that is creating the log.
 - **`type [String]`** (required): The log type.
 - **`message [String]`** (optional): A general message about the log.
 - **`userCreated [String]`** (optional): The user that creates the log.
+- **`dateCreated [ISODate]`** (optional): The date when the log was created.
 - **`log [Object|Array]`** (optional): This property is a JSON that includes all the technical data about your log. If `Array` was received, will be transformed as an `Object`.
   - **`log.functionName [String]`**: This field will be completed with ENV variable **`JANIS_FUNCTION_NAME`**. The variable is created in package [@janiscommerce/lambda](https://www.npmjs.com/package/@janiscommerce/lambda)
   - **`log.apiRequestLogId [String]`**: This field will be completed with ENV variable **`JANIS_API_REQUEST_LOG_ID`**. The variable is created in package [@janiscommerce/api](https://www.npmjs.com/package/@janiscommerce/api)
@@ -38,6 +41,11 @@ The `log [Object]` parameter have the following structure:
 ### **`createTracker(clientCode)`**
 Parameters: `clientCode [String]`
 Create a new tracker to build an incremental log. It returns a [LogTracker](#log-tracker) instance.
+
+### **`sendToTrace(logs)`**
+Parameters: `logs [Array<LogData>]
+Sends the received logs directly to a Firehose instance, skipping local server check.
+Logs have the same structure as in the `add()` method, but with the `client` property being required.
 
 ## Log Tracker
 

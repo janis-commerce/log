@@ -7,5 +7,6 @@
 	"message": "string?",
 	"client": "string&!empty",
 	"userCreated": "string?|null?",
+	"dateCreated": "ISODate|null?",
 	"log": "object?|array?"
 }
