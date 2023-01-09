@@ -717,7 +717,7 @@ describe('Log', () => {
 			sinon.stub(process, 'env')
 				.value({
 					...process.env,
-					JANIS_TRACE_PRIVATE_FIELDS: ['credentials', 'tokens', 'nickname']
+					JANIS_TRACE_PRIVATE_FIELDS: 'credentials, tokens, nickname'
 				});
 
 			stubAssumeRole();
