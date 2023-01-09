@@ -728,7 +728,15 @@ describe('Log', () => {
 			const logWithFieldsToExclude = {
 				configuration: {
 					tokens: ['abacabb'],
-					organizations: [{ name: 'janis company', credentials: { user: 'test', password: 'pass' } }]
+					organizations: [{
+						name: 'janis company',
+						credentials: {
+							user: 'test',
+							password: 'pass'
+						}
+					},
+					null,
+					undefined]
 				}
 			};
 
@@ -742,7 +750,15 @@ describe('Log', () => {
 				Records: [
 					formatLogForFirehose({
 						...sampleLog,
-						log: { data: [{ configuration: { organizations: [{ name: 'janis company' }] } }] }
+						log: {
+							data: [{
+								configuration: {
+									organizations: [{ name: 'janis company' },
+										null,
+										undefined]
+								}
+							}]
+						}
 					}, 'some-client')
 				]
 			});
