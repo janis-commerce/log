@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [3.7.0] - 2023-01-10
+### Added
+- Now logs sensitive data can be removed using the `JANIS_TRACE_PRIVATE_FIELDS` environment variable
+
 ## [3.6.0] - 2022-11-10
 ### Added
 - Trace Layer support for local log buffering
