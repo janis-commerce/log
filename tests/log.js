@@ -709,4 +709,61 @@ describe('Log', () => {
 			Log.on();
 		});
 	});
+
+	context('When excluding properties to be logged', () => {
+
+		it('Should exclude the defined properties in case they exist in the data to be logged', async () => {
+
+			sinon.stub(process, 'env')
+				.value({
+					...process.env,
+					JANIS_TRACE_PRIVATE_FIELDS: 'credentials, tokens, nickname'
+				});
+
+			stubAssumeRole();
+
+			sinon.stub(Firehose.prototype, 'putRecordBatch')
+				.resolves();
+
+			const logWithFieldsToExclude = {
+				configuration: {
+					tokens: ['abacabb'],
+					organizations: [{
+						name: 'janis company',
+						credentials: {
+							user: 'test',
+							password: 'pass'
+						}
+					},
+					null,
+					undefined]
+				}
+			};
+
+			await Log.add('some-client', {
+				...sampleLog,
+				log: [logWithFieldsToExclude]
+			});
+
+			sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
+				DeliveryStreamName: 'JanisTraceFirehoseBeta',
+				Records: [
+					formatLogForFirehose({
+						...sampleLog,
+						log: {
+							data: [{
+								configuration: {
+									organizations: [{ name: 'janis company' },
+										null,
+										undefined]
+								}
+							}]
+						}
+					}, 'some-client')
+				]
+			});
+
+			assertAssumeRole();
+		});
+	});
 });
