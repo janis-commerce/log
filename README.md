@@ -17,7 +17,7 @@ npm install @janiscommerce/log
 **`JANIS_ENV`** (required): The stage name that will used as prefix for trace firehose delivery stream.
 **`LOG_ROLE_ARN`** (required): The ARN to assume the trace role in order to put records in Firehose.
 **`JANIS_TRACE_EXTENSION_ENABLED`**: If this variable is set, logs will be attempted to be buffered in the Janis Trace Extension server. If the server fails, direct call to Firehose is the fallback.
-**`JANIS_TRACE_PRIVATE_FIELDS`**: In case it is necessary to exclude properties to be logged, they should be defined in this variable
+**`JANIS_TRACE_PRIVATE_FIELDS`**: In case it is necessary to exclude properties to be logged, they should be defined in this variable. In order to set multiple fields, set them separated by commas. For example: `JANIS_TRACE_PRIVATE_FIELDS=password,token`
 
 ## API
 ### **`add(clientCode, logs)`**
