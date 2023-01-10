@@ -753,9 +753,13 @@ describe('Log', () => {
 						log: {
 							data: [{
 								configuration: {
-									organizations: [{ name: 'janis company' },
-										null,
-										undefined]
+									tokens: '***',
+									organizations: [{
+										name: 'janis company',
+										credentials: '***'
+									},
+									null,
+									undefined]
 								}
 							}]
 						}

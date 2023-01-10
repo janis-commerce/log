@@ -13,8 +13,8 @@ describe('ExcludeFieldsFromLog Test', () => {
 		assert.deepStrictEqual(excludeFieldsFromLog(log), log);
 	});
 
-	it('should exclude defined properties', () => {
-		assert.deepStrictEqual(excludeFieldsFromLog(log, ['name']), {});
+	it('Should exclude defined properties', () => {
+		assert.deepStrictEqual(excludeFieldsFromLog(log, ['name']), { name: '***' });
 	});
 
 	it('Should exclude the defined properties even if it finds more than one occurrence', () => {
@@ -28,7 +28,9 @@ describe('ExcludeFieldsFromLog Test', () => {
 		['name']
 		),
 		{
+			name: '***',
 			company: {
+				name: '***',
 				refId: 'cny-01'
 			}
 		});
@@ -60,16 +62,20 @@ describe('ExcludeFieldsFromLog Test', () => {
 		['name', 'credentials']
 		),
 		{
+			name: '***',
 			organizations: [
 				{
 					company: {
+						name: '***',
 						refId: 'cny-02'
 					}
 				},
 				{
 					company: {
+						name: '***',
 						carrier: null,
-						refId: 'cny-02'
+						refId: 'cny-02',
+						credentials: '***'
 					}
 				}
 			]
