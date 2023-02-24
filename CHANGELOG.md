@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [4.0.0] - 2023-02-24
+### Changed
+- Migrate `AWS SDK` to `V3` version
+
 ## [3.7.1] - 2023-01-10
 ### Changed
 - Now sensitive data is redacted with '***' instead of being removed
