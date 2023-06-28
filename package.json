@@ -9,7 +9,7 @@
     "watch-test": "export TEST_ENV=true; mocha --exit -R nyan -w --recursive tests/ --require tests/bootstrap",
     "coverage": "nyc npm test",
     "lint": "eslint lib/ tests/",
-    "build-types": "tsc lib/index.js --declaration --allowJs --emitDeclarationOnly --outDir types",
+    "build-types": "tsc lib/log.js --declaration --allowJs --emitDeclarationOnly --outDir types",
     "prepare": "husky install"
   },
   "repository": {
