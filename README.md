@@ -11,13 +11,18 @@ A package for creating logs in Firehose
 npm install @janiscommerce/log
 ```
 
+## Breaking changes _Since 5.0.0_ :warning:
+- Using env var `TRACE_LOG_ROLE_ARN` instead of `LOG_ROLE_ARN`
+- New **required** env var `TRACE_FIREHOSE_DELIVERY_STREAM`
+- `on()` method was removed, deprecated in `3.5.0`
+
 ## 🔧 Configuration
 ### ENV variables
-**`JANIS_SERVICE_NAME`** (required): The name of the service that will create the log.
-**`JANIS_ENV`** (required): The stage name that will used as prefix for trace firehose delivery stream.
-**`LOG_ROLE_ARN`** (required): The ARN to assume the trace role in order to put records in Firehose.
-**`JANIS_TRACE_EXTENSION_ENABLED`**: If this variable is set, logs will be attempted to be buffered in the Janis Trace Extension server. If the server fails, direct call to Firehose is the fallback.
-**`JANIS_TRACE_PRIVATE_FIELDS`**: In case it is necessary to exclude properties to be logged, they should be defined in this variable. In order to set multiple fields, set them separated by commas. For example: `JANIS_TRACE_PRIVATE_FIELDS=password,token`
+- **`JANIS_SERVICE_NAME`** (required): The name of the service that will create the log.
+- **`TRACE_LOG_ROLE_ARN`**: The ARN to assume the trace role in order to put records in Firehose.
+- **`TRACE_FIREHOSE_DELIVERY_STREAM`** (required): The Delivery Stream Name to put records in Firehose.
+- **`JANIS_TRACE_EXTENSION_ENABLED`**: If this variable is set, logs will be attempted to be buffered in the Janis Trace Extension server. If the server fails, direct call to Firehose is the fallback.
+- **`JANIS_TRACE_PRIVATE_FIELDS`**: In case it is necessary to exclude properties to be logged, they should be defined in this variable. In order to set multiple fields, set them separated by commas. For example: `JANIS_TRACE_PRIVATE_FIELDS=password,token`
 
 ## API
 ### **`add(clientCode, logs)`**

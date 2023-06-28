@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.0.0] - 2023-06-16
+### Changed
+- **Breaking Change** using env variable `TRACE_LOG_ROLE_ARN` instead of `LOG_ROLE_ARN`
+- **Breaking Change** using env variable `TRACE_FIREHOSE_DELIVERY_STREAM` for Firehose DeliveryStream name
+
+### Removed
+- `on()` method
+
 ## [4.0.0] - 2023-02-24
 ### Changed
 - Migrate `AWS SDK` to `V3` version

@@ -2,7 +2,7 @@
 
 const sinon = require('sinon');
 
-const Log = require('../lib');
+const Log = require('../lib/log');
 
 describe('Log tracker', () => {
 
