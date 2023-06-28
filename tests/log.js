@@ -733,11 +733,17 @@ describe('Log', () => {
 
 		it('Should return the serverless hooks', () => {
 
-			process.env.TRACE_LOG_ROLE_ARN = traceLogRoleArn;
+			sinon.stub(process, 'env')
+				.value({
+					...process.env,
+					TRACE_LOG_ROLE_ARN: traceLogRoleArn,
+					TRACE_FIREHOSE_DELIVERY_STREAM: deliveryStreamName
+				});
 
 			assert.deepStrictEqual(Log.serverlessConfiguration, [
 				['envVars', {
-					TRACE_LOG_ROLE_ARN: traceLogRoleArn
+					TRACE_LOG_ROLE_ARN: traceLogRoleArn,
+					TRACE_FIREHOSE_DELIVERY_STREAM: deliveryStreamName
 				}],
 
 				['iamStatement', {
