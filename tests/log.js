@@ -742,6 +742,7 @@ describe('Log', () => {
 
 			assert.deepStrictEqual(Log.serverlessConfiguration, [
 				['envVars', {
+					LOG_ROLE_ARN: traceLogRoleArn,
 					TRACE_LOG_ROLE_ARN: traceLogRoleArn,
 					TRACE_FIREHOSE_DELIVERY_STREAM: deliveryStreamName
 				}],
