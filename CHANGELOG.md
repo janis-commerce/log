@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.0.2] - 2023-07-04
+### Fixed
+- Added `LOG_ROLE_ARN` env var to help with backwards compatibility for janiscommerce packages that still use v4 of this package
+
 ## [5.0.0] - 2023-06-16
 ### Changed
 - **Breaking Change** using env variable `TRACE_LOG_ROLE_ARN` instead of `LOG_ROLE_ARN`
