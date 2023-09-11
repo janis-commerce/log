@@ -584,6 +584,41 @@ describe('Log', () => {
 				sinon.assert.notCalled(STS.prototype.assumeRole);
 			});
 
+			it('Should send logs in batches of at most 100 logs to extension local server', async () => {
+
+				sinon.stub(axios, 'post')
+					.resolves();
+
+				sinon.stub(Firehose.prototype, 'putRecordBatch');
+
+				const { service, userCreated, ...minimalLog } = sampleLog;
+
+				const expectedLog = {
+					...minimalLog,
+					service: 'default-service' // from env in bootstrap.js
+				};
+
+				await Log.add('some-client', new Array(120).fill(minimalLog));
+
+				const formattedLog = formatLog(expectedLog, 'some-client');
+
+				sinon.assert.calledTwice(axios.post);
+				sinon.assert.calledWithExactly(axios.post.firstCall, 'http://127.0.0.1:8585/logs', {
+					logs: new Array(100).fill(formattedLog)
+				}, {
+					timeout: 300
+				});
+				sinon.assert.calledWithExactly(axios.post.secondCall, 'http://127.0.0.1:8585/logs', {
+					logs: new Array(20).fill(formattedLog)
+				}, {
+					timeout: 300
+				});
+
+				sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
+
+				sinon.assert.notCalled(STS.prototype.assumeRole);
+			});
+
 			it('Should send logs to Firehose if extension local server fails', async () => {
 
 				sinon.stub(axios, 'post')
