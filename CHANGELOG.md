@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.0.3] - 2023-09-12
+### Changed
+- Added local log generation chunk split to avoid request timeouts
+- Changed `uuid` npm package for nodejs native `crypto` module
+
 ## [5.0.2] - 2023-07-04
 ### Fixed
 - Added `LOG_ROLE_ARN` env var to help with backwards compatibility for janiscommerce packages that still use v4 of this package
