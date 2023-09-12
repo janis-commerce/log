@@ -123,7 +123,6 @@ describe('Log', () => {
 				await Log.add('some-client', sampleLog);
 			});
 
-
 			it('Should not send the log to Firehose when ENV service variable not exists', async () => {
 
 				process.env.JANIS_ENV = 'beta';
@@ -853,7 +852,6 @@ describe('Log', () => {
 					TRACE_FIREHOSE_DELIVERY_STREAM: deliveryStreamName,
 					JANIS_TRACE_PRIVATE_FIELDS: 'credentials, tokens, nickname'
 				});
-
 
 			const logWithFieldsToExclude = {
 				configuration: {
