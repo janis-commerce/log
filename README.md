@@ -12,13 +12,14 @@ npm install @janiscommerce/log
 
 ## Configuration
 ### ENV variables
-**`JANIS_SERVICE_NAME`** (required): The name of the service that will create the log.  
+**`JANIS_SERVICE_NAME`** (required): The name of the service that will create the log.
 **`JANIS_ENV`** (required): The stage name that will used as prefix for trace firehose delivery stream.
+**`TRACE_FIREHOSE_DELIVERY_STREAM`** (required): The trace firehose delivery stream name.
 **`LOG_ROLE_ARN`** (required): The ARN to assume the trace role in order to put records in Firehose.
 
 ## API
-### **`add(clientCode, logs)`**  
-Parameters: `clientCode [String]`, `logs [Object] or [Object array]`  
+### **`add(clientCode, logs)`**
+Parameters: `clientCode [String]`, `logs [Object] or [Object array]`
 Puts the recieved log or logs into the janis-trace-firehose
 
 ### Log structure
@@ -53,15 +54,15 @@ The `log [Object]` parameter have the following structure:
 }
 ```
 
-### **`on(event, callback)`**  
+### **`on(event, callback)`**
 Parameters: `event [String]`, `callback [Function]`
 Calls a callback when the specified event is emitted.
 
 ## Errors
 
-The errors are informed with a `LogError`.  
-This object has a code that can be useful for a correct error handling.  
-The codes are the following:  
+The errors are informed with a `LogError`.
+This object has a code that can be useful for a correct error handling.
+The codes are the following:
 
 | Code | Description                    |
 |------|--------------------------------|

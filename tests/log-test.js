@@ -43,10 +43,12 @@ describe('Log', () => {
 
 	const setRoleEnvVars = () => {
 		process.env.LOG_ROLE_ARN = 'some-role-arn';
+		process.env.TRACE_FIREHOSE_DELIVERY_STREAM = 'TraceFirehoseDeliveryStream';
 	};
 
 	const clearRoleEnvVars = () => {
 		delete process.env.LOG_ROLE_ARN;
+		delete process.env.TRACE_FIREHOSE_DELIVERY_STREAM;
 	};
 
 	const setServiceEnvVars = () => {
@@ -103,7 +105,7 @@ describe('Log', () => {
 
 			sandbox.assert.calledTwice(Firehose.prototype.putRecordBatch);
 			sandbox.assert.calledWithExactly(Firehose.prototype.putRecordBatch, {
-				DeliveryStreamName: 'JanisTraceFirehoseBeta',
+				DeliveryStreamName: 'TraceFirehoseDeliveryStream',
 				Records: [
 					{
 						Data: Buffer.from(JSON.stringify({ ...expectedLog, dateCreated: fakeTime.Date() }))
@@ -231,7 +233,7 @@ describe('Log', () => {
 
 			sandbox.assert.calledTwice(Firehose.prototype.putRecordBatch);
 			sandbox.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {
-				DeliveryStreamName: 'JanisTraceFirehoseBeta',
+				DeliveryStreamName: 'TraceFirehoseDeliveryStream',
 				Records: [
 					{
 						Data: Buffer.from(JSON.stringify({ ...expectedLog, dateCreated: fakeTime.Date() }))
@@ -271,7 +273,7 @@ describe('Log', () => {
 
 			sandbox.assert.calledThrice(Firehose.prototype.putRecordBatch);
 			sandbox.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {
-				DeliveryStreamName: 'JanisTraceFirehoseQA',
+				DeliveryStreamName: 'TraceFirehoseDeliveryStream',
 				Records: [
 					{
 						Data: Buffer.from(JSON.stringify({ ...expectedLog, log: undefined, dateCreated: fakeTime.Date() }))
@@ -284,20 +286,6 @@ describe('Log', () => {
 				RoleSessionName: 'default-service',
 				DurationSeconds: 1800
 			});
-		});
-
-		it('Should not call Firehose putRecordBatch when ENV stage variable not exists', async () => {
-
-			clearStageEnvVars();
-
-			sandbox.stub(STS.prototype, 'assumeRole')
-				.resolves(fakeRole);
-
-			sandbox.spy(Firehose.prototype, 'putRecordBatch');
-
-			await Log.add('some-client', fakeLog);
-
-			sandbox.assert.notCalled(Firehose.prototype.putRecordBatch);
 		});
 
 		it('Should not call Firehose putRecordBatch when ENV service variable not exists', async () => {
