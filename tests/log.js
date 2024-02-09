@@ -1,20 +1,15 @@
 'use strict';
 
-const assert = require('assert');
 const sinon = require('sinon');
 
 const { default: axios } = require('axios');
 
-const { STS, Firehose } = require('../lib/aws-wrappers');
-
 const Log = require('../lib/log');
 const FirehoseInstance = require('../lib/firehose-instance');
 
-describe('Log', () => {
+const { formatLog } = require('./utils/helpers');
 
-	const deliveryStreamName = 'TraceDeliveryStreamName';
-	const traceLogRoleArn = 'TraceLogRoleArn';
-	const roleSessionName = 'role-session-default-service';
+describe('Log', () => {
 
 	const sampleLog = {
 		id: '8885e503-7272-4c0f-a355-5c7151540e18',
@@ -27,93 +22,24 @@ describe('Log', () => {
 		log: { color: 'red' }
 	};
 
-	const clearCache = () => {
-		delete FirehoseInstance.credentialsExpiration;
-		delete FirehoseInstance.firehose;
-	};
-
-	let fakeTime = null;
-
 	const originalEnv = { ...process.env };
 
 	beforeEach(() => {
-		fakeTime = sinon.useFakeTimers(new Date());
+		sinon.useFakeTimers(new Date());
+		sinon.stub(FirehoseInstance.prototype, 'putRecords').resolves();
 	});
 
 	afterEach(() => {
 		process.env = { ...originalEnv };
-		clearCache();
 		sinon.restore();
 	});
-
-	const formatLog = (rawLog, client, functionName, apiRequestLogId) => {
-
-		const {
-			id, service, entity, entityId, type, message, dateCreated, userCreated
-		} = rawLog;
-
-		const log = {
-			...functionName && { functionName },
-			...apiRequestLogId && { apiRequestLogId },
-			...rawLog.log
-		};
-
-		const formattedLog = {
-			id,
-			service,
-			entity,
-			entityId,
-			type,
-			message,
-			client,
-			...Object.keys(log).length && { log: JSON.stringify(log) },
-			...userCreated !== null && { userCreated },
-			dateCreated: dateCreated || new Date().toISOString()
-		};
-
-		return formattedLog;
-	};
-
-	const formatLogForFirehose = (rawLog, client, functionName, apiRequestLogId) => {
-
-		const formattedLog = formatLog(rawLog, client, functionName, apiRequestLogId);
-
-		return { Data: Buffer.from(JSON.stringify(formattedLog)) };
-	};
-
-	const stubAssumeRole = () => {
-		sinon.stub(STS.prototype, 'assumeRole')
-			.resolves({
-				Credentials: {
-					AccessKeyId: 'some-access-key-id',
-					SecretAccessKey: 'some-secret-access-key',
-					SessionToken: 'some-session-token'
-				},
-				Expiration: new Date().toISOString()
-			});
-	};
-
-	const assertAssumeRole = (callCount = 1) => {
-		sinon.assert.callCount(STS.prototype.assumeRole, callCount);
-		sinon.assert.alwaysCalledWithExactly(STS.prototype.assumeRole, {
-			RoleArn: traceLogRoleArn,
-			RoleSessionName: roleSessionName,
-			DurationSeconds: 1800
-		});
-	};
 
 	describe('add', () => {
 
 		context('When config is not correct', () => {
 
-			beforeEach(() => {
-				stubAssumeRole();
-				sinon.spy(Firehose.prototype, 'putRecordBatch');
-			});
-
 			afterEach(() => {
-				sinon.assert.notCalled(STS.prototype.assumeRole);
-				sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
+				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
 			});
 
 			it('Should not send the log to Firehose when the ENV is not valid', async () => {
@@ -134,14 +60,8 @@ describe('Log', () => {
 
 		context('When the received log is invalid', () => {
 
-			beforeEach(() => {
-				stubAssumeRole();
-				sinon.spy(Firehose.prototype, 'putRecordBatch');
-			});
-
 			afterEach(() => {
-				sinon.assert.notCalled(STS.prototype.assumeRole);
-				sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
+				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
 			});
 
 			const invalidLogs = [
@@ -164,103 +84,7 @@ describe('Log', () => {
 
 		context('When valid logs received', () => {
 
-			beforeEach(() => {
-
-				sinon.stub(process, 'env')
-					.value({
-						...process.env,
-						TRACE_LOG_ROLE_ARN: traceLogRoleArn,
-						TRACE_FIREHOSE_DELIVERY_STREAM: deliveryStreamName
-					});
-
-				stubAssumeRole();
-			});
-
-			it('Should split the received logs into batches of 500 logs', async () => {
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.resolves();
-
-				await Log.add('some-client', Array(1250).fill(sampleLog));
-
-				sinon.assert.calledThrice(Firehose.prototype.putRecordBatch);
-
-				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(0), {
-					DeliveryStreamName: deliveryStreamName,
-					Records: Array(500).fill(formatLogForFirehose(sampleLog, 'some-client'))
-				});
-
-				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(1), {
-					DeliveryStreamName: deliveryStreamName,
-					Records: Array(500).fill(formatLogForFirehose(sampleLog, 'some-client'))
-				});
-
-				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(2), { // last batch
-					DeliveryStreamName: deliveryStreamName,
-					Records: Array(250).fill(formatLogForFirehose(sampleLog, 'some-client'))
-				});
-
-				assertAssumeRole();
-			});
-
-			it('Should send logs to Firehose and cache the assumed role credentials', async () => {
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.resolves();
-
-				await Log.add('some-client', sampleLog);
-
-				await Log.add('other-client', sampleLog);
-
-				sinon.assert.calledTwice(Firehose.prototype.putRecordBatch);
-
-				['some-client', 'other-client'].forEach(client => {
-					sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch, {
-						DeliveryStreamName: deliveryStreamName,
-						Records: [formatLogForFirehose(sampleLog, client)]
-					});
-				});
-
-				assertAssumeRole();
-			});
-
-			it('Should get new role credentials when the previous ones expires', async () => {
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.resolves();
-
-				await Log.add('some-client', sampleLog);
-
-				fakeTime.tick(1900000); // more than 30 min
-
-				await Log.add('other-client',	 sampleLog);
-
-				sinon.assert.calledTwice(Firehose.prototype.putRecordBatch);
-
-				assertAssumeRole(2);
-			});
-
-			it('Should send log to Firehose without credentials if there are no Role ARN ENV', async () => {
-
-				process.env.TRACE_LOG_ROLE_ARN = '';
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.resolves();
-
-				await Log.add('some-client', sampleLog);
-
-				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
-					DeliveryStreamName: deliveryStreamName,
-					Records: [formatLogForFirehose(sampleLog, 'some-client')]
-				});
-
-				sinon.assert.notCalled(STS.prototype.assumeRole);
-			});
-
 			it('Should send log to Firehose with defaults values', async () => {
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.resolves();
 
 				const { service, userCreated, ...minimalLog } = sampleLog;
 
@@ -271,17 +95,10 @@ describe('Log', () => {
 
 				await Log.add('some-client', minimalLog);
 
-				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
-					DeliveryStreamName: deliveryStreamName,
-					Records: [formatLogForFirehose(expectedLog, 'some-client')]
-				});
-				assertAssumeRole();
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
 			});
 
 			it('Should send only the valid logs to Firehose if there are some invalid ones', async () => {
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.resolves();
 
 				const { service, userCreated, ...minimalLog } = sampleLog;
 
@@ -295,18 +112,10 @@ describe('Log', () => {
 					{ invalidLog: true }
 				]);
 
-				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
-					DeliveryStreamName: deliveryStreamName,
-					Records: [formatLogForFirehose(expectedLog, 'some-client')]
-				});
-
-				assertAssumeRole();
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
 			});
 
 			it('Should send log to Firehose with predefined dateCreated if it is received', async () => {
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.resolves();
 
 				const { service, userCreated, ...minimalLog } = sampleLog;
 
@@ -321,223 +130,50 @@ describe('Log', () => {
 					dateCreated: new Date('2022-11-10T14:00:00.000Z')
 				});
 
-				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
-					DeliveryStreamName: deliveryStreamName,
-					Records: [formatLogForFirehose(expectedLog, 'some-client')]
-				});
-
-				assertAssumeRole();
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
 			});
 
-			it('Should send log to Firehouse with functionName in log when JANIS_FUNCTION_NAME env var exists', async () => {
+			it('Should send log to Firehose with functionName in log when JANIS_FUNCTION_NAME env var exists', async () => {
 
 				process.env.JANIS_FUNCTION_NAME = 'UpdateProduct';
 
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.resolves();
-
 				await Log.add('some-client', sampleLog);
 
-				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
-					DeliveryStreamName: deliveryStreamName,
-					Records: [formatLogForFirehose(sampleLog, 'some-client', 'UpdateProduct')]
-				});
-
-				assertAssumeRole();
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(sampleLog, 'some-client', 'UpdateProduct')]);
 			});
 
-			it('Should send log to Firehouse with apiRequestLogId in log when JANIS_API_REQUEST_LOG_ID env var exists', async () => {
+			it('Should send log to Firehose with apiRequestLogId in log when JANIS_API_REQUEST_LOG_ID env var exists', async () => {
 
 				const apiRequestLogId = '1dc1149c-8ebc-4405-adbf-30463448af1f';
 				process.env.JANIS_API_REQUEST_LOG_ID = apiRequestLogId;
 
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.resolves();
-
 				await Log.add('some-client', sampleLog);
 
-				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
-					DeliveryStreamName: deliveryStreamName,
-					Records: [formatLogForFirehose(sampleLog, 'some-client', null, apiRequestLogId)]
-				});
-
-				assertAssumeRole();
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(sampleLog, 'some-client', null, apiRequestLogId)]);
 			});
 
-			it('Should send log to Firehouse with empty log', async () => {
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.resolves();
+			it('Should send log to Firehose with empty log', async () => {
 
 				const { log, ...logWithoutLog } = sampleLog;
 
 				await Log.add('some-client', logWithoutLog);
 
-				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
-					DeliveryStreamName: deliveryStreamName,
-					Records: [
-						formatLogForFirehose(logWithoutLog, 'some-client')
-					]
-				});
-
-				assertAssumeRole();
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(logWithoutLog, 'some-client')]);
 			});
 
-			it('Should send log to Firehouse with formatted log field as object when an array was received', async () => {
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.resolves();
+			it('Should send log to Firehose with formatted log field as object when an array was received', async () => {
 
 				await Log.add('some-client', {
 					...sampleLog,
 					log: [sampleLog.log]
 				});
 
-				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
-					DeliveryStreamName: deliveryStreamName,
-					Records: [
-						formatLogForFirehose({ ...sampleLog, log: { data: [sampleLog.log] } }, 'some-client')
-					]
-				});
-
-				assertAssumeRole();
-			});
-		});
-
-		context('When Firehouse response with errors', () => {
-
-			beforeEach(() => {
-				stubAssumeRole();
-
-				sinon.stub(process, 'env')
-					.value({
-						...process.env,
-						TRACE_LOG_ROLE_ARN: traceLogRoleArn,
-						TRACE_FIREHOSE_DELIVERY_STREAM: deliveryStreamName
-					});
-			});
-
-			afterEach(() => {
-				assertAssumeRole();
-			});
-
-			it('Should retry and end process successfully when the log can be sent', async () => {
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.onFirstCall()
-					.resolves({ FailedPutCount: 1 })
-					.onSecondCall()
-					.resolves();
-
-				await Log.add('some-client', sampleLog);
-
-				sinon.assert.callCount(Firehose.prototype.putRecordBatch, 2);
-
-				sinon.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {
-					DeliveryStreamName: deliveryStreamName,
-					Records: [formatLogForFirehose(sampleLog, 'some-client')]
-				});
-			});
-
-			it('Should retry but end process when max retries reached', async () => {
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.resolves({ FailedPutCount: 1 });
-
-				await Log.add('some-client', sampleLog);
-
-				sinon.assert.callCount(Firehose.prototype.putRecordBatch, 5);
-
-				sinon.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {
-					DeliveryStreamName: deliveryStreamName,
-					Records: [formatLogForFirehose(sampleLog, 'some-client')]
-				});
-			});
-		});
-
-		context('When Firehouse rejects', () => {
-
-			beforeEach(() => {
-				stubAssumeRole();
-
-				sinon.stub(process, 'env')
-					.value({
-						...process.env,
-						TRACE_LOG_ROLE_ARN: traceLogRoleArn,
-						TRACE_FIREHOSE_DELIVERY_STREAM: deliveryStreamName
-					});
-			});
-
-			afterEach(() => {
-				assertAssumeRole();
-			});
-
-			it('Should retry and end process successfully when the log can be sent', async () => {
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.onFirstCall()
-					.rejects(new Error('Fail to put records'))
-					.onSecondCall()
-					.resolves();
-
-				await Log.add('some-client', sampleLog);
-
-				sinon.assert.callCount(Firehose.prototype.putRecordBatch, 2);
-
-				sinon.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {
-					DeliveryStreamName: deliveryStreamName,
-					Records: [formatLogForFirehose(sampleLog, 'some-client')]
-				});
-			});
-
-			it('Should retry but end process when max retries reached', async () => {
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.rejects(new Error('Fail to put records'));
-
-				await Log.add('some-client', sampleLog);
-
-				sinon.assert.callCount(Firehose.prototype.putRecordBatch, 5);
-
-				sinon.assert.alwaysCalledWithExactly(Firehose.prototype.putRecordBatch, {
-					DeliveryStreamName: deliveryStreamName,
-					Records: [formatLogForFirehose(sampleLog, 'some-client')]
-				});
-			});
-		});
-
-		context('When STS assumeRole does not work', () => {
-
-			beforeEach(() => {
-
-				sinon.stub(process, 'env')
-					.value({
-						...process.env,
-						TRACE_LOG_ROLE_ARN: traceLogRoleArn
-					});
-
-				sinon.spy(Firehose.prototype, 'putRecordBatch');
-			});
-
-			afterEach(() => {
-				sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
-				assertAssumeRole();
-			});
-
-			it('Should not call Firehose putRecordBatch when STS rejects', async () => {
-
-				sinon.stub(STS.prototype, 'assumeRole')
-					.rejects(new Error('Fail to assume role'));
-
-				await Log.add('some-client', sampleLog);
-			});
-
-			it('Should not call Firehose putRecordBatch when STS resolves an invalid result', async () => {
-
-				sinon.stub(STS.prototype, 'assumeRole')
-					.resolves(null);
-
-				await Log.add('some-client', sampleLog);
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog({
+					...sampleLog,
+					log: {
+						data: [sampleLog.log]
+					}
+				}, 'some-client')]);
 			});
 		});
 
@@ -547,21 +183,13 @@ describe('Log', () => {
 				sinon.stub(process, 'env')
 					.value({
 						...process.env,
-						TRACE_LOG_ROLE_ARN: traceLogRoleArn,
-						TRACE_FIREHOSE_DELIVERY_STREAM: deliveryStreamName,
 						JANIS_TRACE_EXTENSION_ENABLED: 'true'
 					});
 
-				stubAssumeRole();
+				sinon.stub(axios, 'post').resolves({ status: 200 });
 			});
 
 			it('Should send logs to extension local server', async () => {
-
-				sinon.stub(axios, 'post')
-					.resolves();
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.resolves();
 
 				const { service, userCreated, ...minimalLog } = sampleLog;
 
@@ -578,17 +206,10 @@ describe('Log', () => {
 					timeout: 300
 				});
 
-				sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
-
-				sinon.assert.notCalled(STS.prototype.assumeRole);
+				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
 			});
 
 			it('Should send logs in batches of at most 100 logs to extension local server', async () => {
-
-				sinon.stub(axios, 'post')
-					.resolves();
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch');
 
 				const { service, userCreated, ...minimalLog } = sampleLog;
 
@@ -613,18 +234,12 @@ describe('Log', () => {
 					timeout: 300
 				});
 
-				sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
-
-				sinon.assert.notCalled(STS.prototype.assumeRole);
+				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
 			});
 
 			it('Should send logs to Firehose if extension local server fails', async () => {
 
-				sinon.stub(axios, 'post')
-					.rejects(new Error('Failed to save logs'));
-
-				sinon.stub(Firehose.prototype, 'putRecordBatch')
-					.resolves();
+				axios.post.rejects(new Error('Failed to save logs'));
 
 				const { service, userCreated, ...minimalLog } = sampleLog;
 
@@ -641,12 +256,7 @@ describe('Log', () => {
 					timeout: 300
 				});
 
-				sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
-					DeliveryStreamName: deliveryStreamName,
-					Records: [formatLogForFirehose(expectedLog, 'some-client')]
-				});
-
-				assertAssumeRole();
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
 			});
 		});
 	});
@@ -658,21 +268,13 @@ describe('Log', () => {
 			sinon.stub(process, 'env')
 				.value({
 					...process.env,
-					TRACE_LOG_ROLE_ARN: traceLogRoleArn,
-					TRACE_FIREHOSE_DELIVERY_STREAM: deliveryStreamName,
 					JANIS_TRACE_EXTENSION_ENABLED: 'true'
 				});
 
-			stubAssumeRole();
+			sinon.stub(axios, 'post').resolves({ status: 200 });
 		});
 
 		it('Should send logs to Firehose, even if trace extension env var is set', async () => {
-
-			sinon.stub(axios, 'post')
-				.resolves();
-
-			sinon.stub(Firehose.prototype, 'putRecordBatch')
-				.resolves();
 
 			const { service, userCreated, log, ...minimalLog } = sampleLog;
 
@@ -693,21 +295,10 @@ describe('Log', () => {
 
 			sinon.assert.notCalled(axios.post);
 
-			sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
-				DeliveryStreamName: deliveryStreamName,
-				Records: [formatLogForFirehose(expectedLog, 'some-client')]
-			});
-
-			assertAssumeRole();
+			sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
 		});
 
 		it('Should send only the valid logs to Firehose, ignoring the invalid ones', async () => {
-
-			sinon.stub(axios, 'post')
-				.resolves();
-
-			sinon.stub(Firehose.prototype, 'putRecordBatch')
-				.resolves();
 
 			const { service, userCreated, log, ...minimalLog } = sampleLog;
 
@@ -730,21 +321,10 @@ describe('Log', () => {
 
 			sinon.assert.notCalled(axios.post);
 
-			sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
-				DeliveryStreamName: deliveryStreamName,
-				Records: [formatLogForFirehose(expectedLog, 'some-client')]
-			});
-
-			assertAssumeRole();
+			sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
 		});
 
 		it('Should not call Firehose if all logs are invalid', async () => {
-
-			sinon.stub(axios, 'post')
-				.resolves();
-
-			sinon.stub(Firehose.prototype, 'putRecordBatch')
-				.resolves();
 
 			const { service, userCreated, ...minimalLog } = sampleLog;
 
@@ -757,58 +337,17 @@ describe('Log', () => {
 
 			sinon.assert.notCalled(axios.post);
 
-			sinon.assert.notCalled(Firehose.prototype.putRecordBatch);
-
-			sinon.assert.notCalled(STS.prototype.assumeRole);
-		});
-	});
-
-	describe('Serverless configuration', () => {
-
-		it('Should return the serverless hooks', () => {
-
-			sinon.stub(process, 'env')
-				.value({
-					...process.env,
-					TRACE_LOG_ROLE_ARN: traceLogRoleArn,
-					TRACE_FIREHOSE_DELIVERY_STREAM: deliveryStreamName
-				});
-
-			assert.deepStrictEqual(Log.serverlessConfiguration, [
-				['envVars', {
-					LOG_ROLE_ARN: traceLogRoleArn,
-					TRACE_LOG_ROLE_ARN: traceLogRoleArn,
-					TRACE_FIREHOSE_DELIVERY_STREAM: deliveryStreamName
-				}],
-
-				['iamStatement', {
-					action: 'Sts:AssumeRole',
-					resource: traceLogRoleArn
-				}]
-			]);
+			sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
 		});
 	});
 
 	describe('Hide fields from Log', () => {
-
-		beforeEach(() => {
-			stubAssumeRole();
-
-			sinon.stub(Firehose.prototype, 'putRecordBatch')
-				.resolves();
-		});
-
-		afterEach(() => {
-			assertAssumeRole();
-		});
 
 		it('Should not hide fields when no fields in env var', async () => {
 
 			sinon.stub(process, 'env')
 				.value({
 					...process.env,
-					TRACE_LOG_ROLE_ARN: traceLogRoleArn,
-					TRACE_FIREHOSE_DELIVERY_STREAM: deliveryStreamName,
 					JANIS_TRACE_PRIVATE_FIELDS: ''
 				});
 
@@ -832,15 +371,12 @@ describe('Log', () => {
 				log: logWithFieldsToExclude
 			});
 
-			sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
-				DeliveryStreamName: deliveryStreamName,
-				Records: [
-					formatLogForFirehose({
-						...sampleLog,
-						log: logWithFieldsToExclude
-					}, 'some-client')
-				]
-			});
+			sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [
+				formatLog({
+					...sampleLog,
+					log: logWithFieldsToExclude
+				}, 'some-client')
+			]);
 		});
 
 		it('Should hide the defined properties in case they exist in the data to be logged', async () => {
@@ -848,8 +384,6 @@ describe('Log', () => {
 			sinon.stub(process, 'env')
 				.value({
 					...process.env,
-					TRACE_LOG_ROLE_ARN: traceLogRoleArn,
-					TRACE_FIREHOSE_DELIVERY_STREAM: deliveryStreamName,
 					JANIS_TRACE_PRIVATE_FIELDS: 'credentials, tokens, nickname'
 				});
 
@@ -873,27 +407,24 @@ describe('Log', () => {
 				log: [logWithFieldsToExclude]
 			});
 
-			sinon.assert.calledOnceWithExactly(Firehose.prototype.putRecordBatch, {
-				DeliveryStreamName: deliveryStreamName,
-				Records: [
-					formatLogForFirehose({
-						...sampleLog,
-						log: {
-							data: [{
-								configuration: {
-									tokens: '***',
-									organizations: [{
-										name: 'janis company',
-										credentials: '***'
-									},
-									null,
-									undefined]
-								}
-							}]
-						}
-					}, 'some-client')
-				]
-			});
+			sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [
+				formatLog({
+					...sampleLog,
+					log: {
+						data: [{
+							configuration: {
+								tokens: '***',
+								organizations: [{
+									name: 'janis company',
+									credentials: '***'
+								},
+								null,
+								undefined]
+							}
+						}]
+					}
+				}, 'some-client')
+			]);
 		});
 	});
 });
