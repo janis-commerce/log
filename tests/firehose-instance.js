@@ -176,6 +176,53 @@ describe('Firehose Instance', () => {
 
 				assertAssumeRole();
 			});
+
+			it('Should retry and split logs until there is one per request', async () => {
+
+				Firehose.prototype.putRecordBatch.resolves({ FailedPutCount: 1 });
+
+				await firehoseInstance.putRecords([sampleLog, sampleLog]);
+
+				sinon.assert.callCount(Firehose.prototype.putRecordBatch, 6);
+
+				const expectedLog = formatLogForFirehose(sampleLog);
+
+				// Split by 500
+				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(0), {
+					DeliveryStreamName: deliveryStreamName,
+					Records: [expectedLog, expectedLog]
+				});
+
+				// Split by 100
+				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(1), {
+					DeliveryStreamName: deliveryStreamName,
+					Records: [expectedLog, expectedLog]
+				});
+
+				// Split by 50
+				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(2), {
+					DeliveryStreamName: deliveryStreamName,
+					Records: [expectedLog, expectedLog]
+				});
+
+				// Split by 10
+				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(3), {
+					DeliveryStreamName: deliveryStreamName,
+					Records: [expectedLog, expectedLog]
+				});
+
+				// Split by 1
+				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(4), {
+					DeliveryStreamName: deliveryStreamName,
+					Records: [expectedLog]
+				});
+				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(5), {
+					DeliveryStreamName: deliveryStreamName,
+					Records: [expectedLog]
+				});
+
+				assertAssumeRole();
+			});
 		});
 
 		context('When Firehose rejects', () => {

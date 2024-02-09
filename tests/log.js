@@ -209,7 +209,7 @@ describe('Log', () => {
 				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
 			});
 
-			it('Should send logs in batches of at most 100 logs to extension local server', async () => {
+			it('Should not send logs to extension local server if they are more than 100 and go directly to firehose', async () => {
 
 				const { service, userCreated, ...minimalLog } = sampleLog;
 
@@ -222,19 +222,9 @@ describe('Log', () => {
 
 				const formattedLog = formatLog(expectedLog, 'some-client');
 
-				sinon.assert.calledTwice(axios.post);
-				sinon.assert.calledWithExactly(axios.post.firstCall, 'http://127.0.0.1:8585/logs', {
-					logs: new Array(100).fill(formattedLog)
-				}, {
-					timeout: 300
-				});
-				sinon.assert.calledWithExactly(axios.post.secondCall, 'http://127.0.0.1:8585/logs', {
-					logs: new Array(20).fill(formattedLog)
-				}, {
-					timeout: 300
-				});
+				sinon.assert.notCalled(axios.post);
 
-				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, new Array(120).fill(formattedLog));
 			});
 
 			it('Should send logs to Firehose if extension local server fails', async () => {
