@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.0.4] - 2024-02-09
+### Changed
+- Improved package overall performance by removing loops, avoiding object creations and changed superstruct by fastest-validator
+
 ## [5.0.3] - 2023-09-12
 ### Changed
 - Added local log generation chunk split to avoid request timeouts
