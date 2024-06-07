@@ -14,12 +14,12 @@ module.exports.formatLog = (rawLog, client, functionName, apiRequestLogId) => {
 
 	const formattedLog = {
 		id,
+		client,
 		service,
 		entity,
-		entityId,
 		type,
-		message,
-		client,
+		...message && { message },
+		...entityId && { entityId }, // cause is optional
 		...Object.keys(log).length && { log: JSON.stringify(log) },
 		...userCreated && { userCreated },
 		dateCreated: dateCreated || new Date().toISOString()

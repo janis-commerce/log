@@ -133,6 +133,34 @@ describe('Log', () => {
 				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
 			});
 
+			it('Should send log to Firehose when entityId not received', async () => {
+
+				const { service, entityId, ...minimalLog } = sampleLog;
+
+				const expectedLog = {
+					...minimalLog,
+					service: 'default-service' // from env
+				};
+
+				await Log.add('some-client', { ...minimalLog });
+
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
+			});
+
+			it('Should send log to Firehose when message not received', async () => {
+
+				const { service, message, ...minimalLog } = sampleLog;
+
+				const expectedLog = {
+					...minimalLog,
+					service: 'default-service' // from env
+				};
+
+				await Log.add('some-client', { ...minimalLog });
+
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
+			});
+
 			it('Should send log to Firehose with functionName in log when JANIS_FUNCTION_NAME env var exists', async () => {
 
 				process.env.JANIS_FUNCTION_NAME = 'UpdateProduct';

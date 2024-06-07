@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.0.6] - 2024-06-07
+### Fixed
+- The field `entityId` is optional in log validation
+
 ## [5.0.5] - 2024-02-09
 ### Changed
 - Skip local lambda layer when saving more than 100 logs together and make firehose requests concurrent
