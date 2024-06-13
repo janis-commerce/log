@@ -1,6 +1,6 @@
 {
   "name": "@janiscommerce/log",
-  "version": "5.0.6",
+  "version": "5.0.7",
   "description": "A package for creating logs in Janis Trace Service",
   "main": "lib/log.js",
   "scripts": {
