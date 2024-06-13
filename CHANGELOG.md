@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.0.9] - 2024-06-13
+### Fixed
+- Fixed missing `client` when `sendToTrace()` was called from Trace Lambda Layer
+
 ## [5.0.8] - 2024-06-13
 ### Added
 - Local logs are notified with `/end` endpoint after listening `janiscommerce.ended` event
