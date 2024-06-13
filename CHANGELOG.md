@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.0.7] - 2024-06-13
+### Fixed
+- Locally flow: avoid multiple validations and formatting for logs
+- Ensure `dateCreated` field for logs
+
 ## [5.0.6] - 2024-06-07
 ### Fixed
 - The field `entityId` is optional in log validation

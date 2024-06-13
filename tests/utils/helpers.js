@@ -22,8 +22,12 @@ module.exports.formatLog = (rawLog, client, functionName, apiRequestLogId) => {
 		...entityId && { entityId }, // cause is optional
 		...Object.keys(log).length && { log: JSON.stringify(log) },
 		...userCreated && { userCreated },
-		dateCreated: dateCreated || new Date().toISOString()
+		dateCreated: dateCreated || new Date(),
+		sendToTraceDelay: 0
 	};
+
+	if(typeof formattedLog.dateCreated !== 'string')
+		formattedLog.dateCreated = formattedLog.dateCreated.toISOString();
 
 	return formattedLog;
 };

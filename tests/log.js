@@ -11,6 +11,8 @@ const { formatLog } = require('./utils/helpers');
 
 describe('Log', () => {
 
+	const now = new Date();
+
 	const sampleLog = {
 		id: '8885e503-7272-4c0f-a355-5c7151540e18',
 		service: 'catalog',
@@ -25,7 +27,7 @@ describe('Log', () => {
 	const originalEnv = { ...process.env };
 
 	beforeEach(() => {
-		sinon.useFakeTimers(new Date());
+		sinon.useFakeTimers(now);
 		sinon.stub(FirehoseInstance.prototype, 'putRecords').resolves();
 	});
 
@@ -119,18 +121,24 @@ describe('Log', () => {
 
 				const { service, userCreated, ...minimalLog } = sampleLog;
 
+				const dateCreated = new Date();
+				dateCreated.setSeconds(dateCreated.getSeconds() - 10);
+
 				const expectedLog = {
 					...minimalLog,
 					service: 'default-service', // from env
-					dateCreated: '2022-11-10T14:00:00.000Z'
+					dateCreated
 				};
 
 				await Log.add('some-client', {
 					...minimalLog,
-					dateCreated: new Date('2022-11-10T14:00:00.000Z')
+					dateCreated: dateCreated.toISOString()
 				});
 
-				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [{
+					...formatLog(expectedLog, 'some-client'),
+					sendToTraceDelay: 10
+				}]);
 			});
 
 			it('Should send log to Firehose when entityId not received', async () => {
@@ -221,15 +229,10 @@ describe('Log', () => {
 
 				const { service, userCreated, ...minimalLog } = sampleLog;
 
-				const expectedLog = {
-					...minimalLog,
-					service: 'default-service' // from env in bootstrap.js
-				};
-
 				await Log.add('some-client', minimalLog);
 
 				sinon.assert.calledOnceWithExactly(axios.post, 'http://127.0.0.1:8585/logs', {
-					logs: [formatLog(expectedLog, 'some-client')]
+					logs: [minimalLog]
 				}, {
 					timeout: 300
 				});
@@ -269,7 +272,7 @@ describe('Log', () => {
 				await Log.add('some-client', minimalLog);
 
 				sinon.assert.calledOnceWithExactly(axios.post, 'http://127.0.0.1:8585/logs', {
-					logs: [formatLog(expectedLog, 'some-client')]
+					logs: [minimalLog]
 				}, {
 					timeout: 300
 				});
@@ -300,15 +303,13 @@ describe('Log', () => {
 				...minimalLog,
 				log,
 				client: 'some-client',
-				service: 'default-service', // from env
-				dateCreated: '2022-11-10T17:05:17.539Z'
+				service: 'default-service' // from env
 			};
 
 			await Log.sendToTrace([{
 				...minimalLog,
 				log: JSON.stringify(log),
-				client: 'some-client',
-				dateCreated: '2022-11-10T17:05:17.539Z'
+				client: 'some-client'
 			}]);
 
 			sinon.assert.notCalled(axios.post);
@@ -324,15 +325,13 @@ describe('Log', () => {
 				...minimalLog,
 				log,
 				client: 'some-client',
-				service: 'default-service', // from env
-				dateCreated: '2022-11-10T17:05:17.539Z'
+				service: 'default-service' // from env
 			};
 
 			await Log.sendToTrace([{
 				...minimalLog,
 				log: JSON.stringify(log),
-				client: 'some-client',
-				dateCreated: '2022-11-10T17:05:17.539Z'
+				client: 'some-client'
 			}, {
 				invalidLog: true
 			}]);
