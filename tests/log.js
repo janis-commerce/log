@@ -4,10 +4,13 @@ const sinon = require('sinon');
 
 const { default: axios } = require('axios');
 
+const Events = require('@janiscommerce/events');
 const Log = require('../lib/log');
 const FirehoseInstance = require('../lib/firehose-instance');
 
 const { formatLog } = require('./utils/helpers');
+
+const { cleanListeningEndedEvent } = require('../lib/helpers/events');
 
 describe('Log', () => {
 
@@ -34,6 +37,8 @@ describe('Log', () => {
 	afterEach(() => {
 		process.env = { ...originalEnv };
 		sinon.restore();
+		Events.off();
+		cleanListeningEndedEvent();
 	});
 
 	describe('add', () => {
@@ -278,6 +283,25 @@ describe('Log', () => {
 				});
 
 				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
+			});
+
+			it('Should call /end when janiscommerce.ended was called', async () => {
+
+				await Log.add('some-client', sampleLog);
+
+				await Events.emit('janiscommerce.ended');
+
+				sinon.assert.calledTwice(axios.post);
+
+				sinon.assert.calledWithExactly(axios.post, 'http://127.0.0.1:8585/logs', {
+					logs: [sampleLog]
+				}, {
+					timeout: 300
+				});
+
+				sinon.assert.calledWithExactly(axios.post, 'http://127.0.0.1:8585/end');
+
+				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
 			});
 		});
 	});
