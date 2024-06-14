@@ -10,6 +10,10 @@ const traceLogRoleArn = 'TraceLogRoleArn';
 
 describe('Serverless configuration', () => {
 
+	afterEach(() => {
+		sinon.restore();
+	});
+
 	it('Should return the serverless hooks', () => {
 
 		sinon.stub(process, 'env')
@@ -23,7 +27,8 @@ describe('Serverless configuration', () => {
 			['envVars', {
 				LOG_ROLE_ARN: traceLogRoleArn,
 				TRACE_LOG_ROLE_ARN: traceLogRoleArn,
-				TRACE_FIREHOSE_DELIVERY_STREAM: deliveryStreamName
+				TRACE_FIREHOSE_DELIVERY_STREAM: deliveryStreamName,
+				JANIS_TRACE_EXTENSION_USE_INVOKE_EVENT: 1
 			}],
 
 			['iamStatement', {

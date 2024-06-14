@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.0.11] - 2024-06-14
+### Fixed
+- The package now sets `JANIS_TRACE_EXTENSION_USE_INVOKE_EVENT` env var using `serverlessConfiguration()`
+
 ## [5.0.10] - 2024-06-14
 ### Fixed
 - Using `on()` to subscribe `janiscommerce.ended` event to ensure receive all events
