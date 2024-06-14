@@ -32,6 +32,7 @@ describe('Log', () => {
 	beforeEach(() => {
 		sinon.useFakeTimers(now);
 		sinon.stub(FirehoseInstance.prototype, 'putRecords').resolves();
+		sinon.spy(Events, 'on');
 	});
 
 	afterEach(() => {
@@ -283,6 +284,8 @@ describe('Log', () => {
 				});
 
 				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
+
+				sinon.assert.notCalled(Events.on);
 			});
 
 			it('Should call /end when janiscommerce.ended was called', async () => {
@@ -302,6 +305,57 @@ describe('Log', () => {
 				sinon.assert.calledWithExactly(axios.post, 'http://127.0.0.1:8585/end');
 
 				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
+
+				sinon.assert.calledOnceWithExactly(Events.on, 'janiscommerce.ended', sinon.match.func);
+			});
+
+			it('Should call twice to /logs and once to /end when multiple logs added separately', async () => {
+
+				await Log.add('some-client', sampleLog);
+
+				await Log.add('some-client', sampleLog);
+
+				await Events.emit('janiscommerce.ended');
+
+				sinon.assert.calledThrice(axios.post);
+
+				for(let indexCall = 0; indexCall <= 1; indexCall++) {
+					sinon.assert.calledWithExactly(axios.post.getCall(indexCall), 'http://127.0.0.1:8585/logs', {
+						logs: [sampleLog]
+					}, {
+						timeout: 300
+					});
+				}
+
+				sinon.assert.calledWithExactly(axios.post.getCall(2), 'http://127.0.0.1:8585/end');
+
+				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
+
+				sinon.assert.calledOnceWithExactly(Events.on, 'janiscommerce.ended', sinon.match.func);
+			});
+
+			it('Should not reject when /end endpoint rejects', async () => {
+
+				axios.post.onCall(1)
+					.rejects(new Error('Error while calling /end'));
+
+				await Log.add('some-client', sampleLog);
+
+				await Events.emit('janiscommerce.ended');
+
+				sinon.assert.calledTwice(axios.post);
+
+				sinon.assert.calledWithExactly(axios.post, 'http://127.0.0.1:8585/logs', {
+					logs: [sampleLog]
+				}, {
+					timeout: 300
+				});
+
+				sinon.assert.calledWithExactly(axios.post, 'http://127.0.0.1:8585/end');
+
+				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
+
+				sinon.assert.calledOnceWithExactly(Events.on, 'janiscommerce.ended', sinon.match.func);
 			});
 		});
 	});

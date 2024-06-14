@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.0.10] - 2024-06-14
+### Fixed
+- Using `on()` to subscribe `janiscommerce.ended` event to ensure receive all events
+
 ## [5.0.9] - 2024-06-13
 ### Fixed
 - Fixed missing `client` when `sendToTrace()` was called from Trace Lambda Layer
