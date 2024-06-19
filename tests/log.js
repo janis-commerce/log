@@ -231,6 +231,12 @@ describe('Log', () => {
 				sinon.stub(axios, 'post').resolves({ status: 200 });
 			});
 
+			afterEach(() => {
+
+				// siempre que la extensión está activa, se carga el evento janiscommerce.ended
+				sinon.assert.calledOnceWithExactly(Events.on, 'janiscommerce.ended', sinon.match.func);
+			});
+
 			it('Should send logs to extension local server', async () => {
 
 				const { service, userCreated, ...minimalLog } = sampleLog;
@@ -284,8 +290,6 @@ describe('Log', () => {
 				});
 
 				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
-
-				sinon.assert.notCalled(Events.on);
 			});
 
 			it('Should call /end when janiscommerce.ended was called', async () => {
@@ -305,8 +309,6 @@ describe('Log', () => {
 				sinon.assert.calledWithExactly(axios.post, 'http://127.0.0.1:8585/end');
 
 				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
-
-				sinon.assert.calledOnceWithExactly(Events.on, 'janiscommerce.ended', sinon.match.func);
 			});
 
 			it('Should call twice to /logs and once to /end when multiple logs added separately', async () => {
@@ -330,8 +332,6 @@ describe('Log', () => {
 				sinon.assert.calledWithExactly(axios.post.getCall(2), 'http://127.0.0.1:8585/end');
 
 				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
-
-				sinon.assert.calledOnceWithExactly(Events.on, 'janiscommerce.ended', sinon.match.func);
 			});
 
 			it('Should not reject when /end endpoint rejects', async () => {
@@ -354,8 +354,6 @@ describe('Log', () => {
 				sinon.assert.calledWithExactly(axios.post, 'http://127.0.0.1:8585/end');
 
 				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
-
-				sinon.assert.calledOnceWithExactly(Events.on, 'janiscommerce.ended', sinon.match.func);
 			});
 		});
 	});

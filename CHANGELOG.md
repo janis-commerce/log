@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.0.12] - 2024-06-19
+### Fixed
+- Ensure ending Trace Extension when no logs loaded in execution
+- Added `start()` method to be called from **@janiscommerce** packages handlers
+
 ## [5.0.11] - 2024-06-14
 ### Fixed
 - The package now sets `JANIS_TRACE_EXTENSION_USE_INVOKE_EVENT` env var using `serverlessConfiguration()`
