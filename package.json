@@ -39,8 +39,8 @@
     "test": "tests"
   },
   "dependencies": {
-    "@aws-sdk/client-firehose": "^3.410.0",
-    "@aws-sdk/client-sts": "^3.410.0",
+    "@aws-sdk/client-firehose": "^3.632.0",
+    "@aws-sdk/client-sts": "^3.632.0",
     "@janiscommerce/api-session": "^3.3.1",
     "@janiscommerce/events": "^0.2.0",
     "axios": "^0.27.2",
