@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.0.13] - 2024-08-15
+### Fixed
+- Dependencies updated
+
 ## [5.0.12] - 2024-06-19
 ### Fixed
 - Ensure ending Trace Extension when no logs loaded in execution
