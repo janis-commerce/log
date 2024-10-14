@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports.formatLog = (rawLog, client, functionName, apiRequestLogId) => {
+module.exports.formatLog = (rawLog, client, functionName, apiRequestLogId, sendToTraceDelay = true, dateAsObject = false) => {
 
 	const {
 		id, service, entity, entityId, type, message, dateCreated, userCreated
@@ -23,10 +23,10 @@ module.exports.formatLog = (rawLog, client, functionName, apiRequestLogId) => {
 		...Object.keys(log).length && { log: JSON.stringify(log) },
 		...userCreated && { userCreated },
 		dateCreated: dateCreated || new Date(),
-		sendToTraceDelay: 0
+		...sendToTraceDelay && { sendToTraceDelay: 0 }
 	};
 
-	if(typeof formattedLog.dateCreated !== 'string')
+	if(typeof formattedLog.dateCreated !== 'string' && !dateAsObject)
 		formattedLog.dateCreated = formattedLog.dateCreated.toISOString();
 
 	return formattedLog;

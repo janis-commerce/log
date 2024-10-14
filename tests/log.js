@@ -106,6 +106,36 @@ describe('Log', () => {
 				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
 			});
 
+			it('Should send log to Firehose with dateCrated when received as string', async () => {
+
+				const { service, userCreated, ...minimalLog } = sampleLog;
+
+				const expectedLog = {
+					...minimalLog,
+					service: 'default-service',
+					dateCreated: new Date().toISOString()
+				};
+
+				await Log.add('some-client', expectedLog);
+
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
+			});
+
+			it('Should send log to Firehose with dateCrated when received as date', async () => {
+
+				const { service, userCreated, ...minimalLog } = sampleLog;
+
+				const expectedLog = {
+					...minimalLog,
+					service: 'default-service',
+					dateCreated: new Date()
+				};
+
+				await Log.add('some-client', expectedLog);
+
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
+			});
+
 			it('Should send only the valid logs to Firehose if there are some invalid ones', async () => {
 
 				const { service, userCreated, ...minimalLog } = sampleLog;
@@ -243,8 +273,13 @@ describe('Log', () => {
 
 				await Log.add('some-client', minimalLog);
 
+				const expectedLog = {
+					...minimalLog,
+					service: 'default-service' // from env in bootstrap.js
+				};
+
 				sinon.assert.calledOnceWithExactly(axios.post, 'http://127.0.0.1:8585/logs', {
-					logs: [minimalLog]
+					logs: [formatLog(expectedLog, 'some-client', false, false, false, true)]
 				}, {
 					timeout: 300
 				});
@@ -284,7 +319,7 @@ describe('Log', () => {
 				await Log.add('some-client', minimalLog);
 
 				sinon.assert.calledOnceWithExactly(axios.post, 'http://127.0.0.1:8585/logs', {
-					logs: [minimalLog]
+					logs: [formatLog(expectedLog, 'some-client', false, false, false, true)]
 				}, {
 					timeout: 300
 				});
@@ -301,7 +336,7 @@ describe('Log', () => {
 				sinon.assert.calledTwice(axios.post);
 
 				sinon.assert.calledWithExactly(axios.post, 'http://127.0.0.1:8585/logs', {
-					logs: [sampleLog]
+					logs: [formatLog(sampleLog, 'some-client', false, false, false, true)]
 				}, {
 					timeout: 300
 				});
@@ -323,7 +358,7 @@ describe('Log', () => {
 
 				for(let indexCall = 0; indexCall <= 1; indexCall++) {
 					sinon.assert.calledWithExactly(axios.post.getCall(indexCall), 'http://127.0.0.1:8585/logs', {
-						logs: [sampleLog]
+						logs: [formatLog(sampleLog, 'some-client', false, false, false, true)]
 					}, {
 						timeout: 300
 					});
@@ -346,7 +381,7 @@ describe('Log', () => {
 				sinon.assert.calledTwice(axios.post);
 
 				sinon.assert.calledWithExactly(axios.post, 'http://127.0.0.1:8585/logs', {
-					logs: [sampleLog]
+					logs: [formatLog(sampleLog, 'some-client', false, false, false, true)]
 				}, {
 					timeout: 300
 				});
@@ -379,11 +414,13 @@ describe('Log', () => {
 				...minimalLog,
 				log,
 				client: 'some-client',
-				service: 'default-service' // from env
+				service: 'default-service'
 			};
 
 			await Log.sendToTrace([{
 				...minimalLog,
+				dateCreated: new Date(),
+				service: 'default-service',
 				log: JSON.stringify(log),
 				client: 'some-client'
 			}]);
@@ -391,46 +428,6 @@ describe('Log', () => {
 			sinon.assert.notCalled(axios.post);
 
 			sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
-		});
-
-		it('Should send only the valid logs to Firehose, ignoring the invalid ones', async () => {
-
-			const { service, userCreated, log, ...minimalLog } = sampleLog;
-
-			const expectedLog = {
-				...minimalLog,
-				log,
-				client: 'some-client',
-				service: 'default-service' // from env
-			};
-
-			await Log.sendToTrace([{
-				...minimalLog,
-				log: JSON.stringify(log),
-				client: 'some-client'
-			}, {
-				invalidLog: true
-			}]);
-
-			sinon.assert.notCalled(axios.post);
-
-			sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, 'some-client')]);
-		});
-
-		it('Should not call Firehose if all logs are invalid', async () => {
-
-			const { service, userCreated, ...minimalLog } = sampleLog;
-
-			await Log.sendToTrace([{
-				...minimalLog,
-				client: ['invalid']
-			}], {
-				invalidLog: true
-			});
-
-			sinon.assert.notCalled(axios.post);
-
-			sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
 		});
 	});
 
