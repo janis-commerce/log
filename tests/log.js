@@ -214,6 +214,15 @@ describe('Log', () => {
 				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(sampleLog, 'some-client', 'UpdateProduct')]);
 			});
 
+			it('Should send log to Firehose with functionName in log when AWS_LAMBDA_FUNCTION_NAME env var exists', async () => {
+
+				process.env.AWS_LAMBDA_FUNCTION_NAME = 'UpdateProductQueueConsumer';
+
+				await Log.add('some-client', sampleLog);
+
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(sampleLog, 'some-client', 'UpdateProductQueueConsumer')]);
+			});
+
 			it('Should send log to Firehose with apiRequestLogId in log when JANIS_API_REQUEST_LOG_ID env var exists', async () => {
 
 				const apiRequestLogId = '1dc1149c-8ebc-4405-adbf-30463448af1f';

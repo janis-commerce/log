@@ -10,7 +10,8 @@
     "coverage": "nyc npm test",
     "lint": "eslint lib/ tests/",
     "build-types": "tsc lib/log.js --declaration --allowJs --emitDeclarationOnly --outDir types",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "postpublish": "./.postpublish.sh"
   },
   "repository": {
     "type": "git",

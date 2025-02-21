@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.1.0] - 2025-02-21
+### Added
+- Now `log` includes field `functionName` with value of env var `AWS_LAMBDA_FUNCTION_NAME`
+
 ## [5.0.14] - 2024-10-14
 ### Fixed
 - Fixed usage of env vars when Trace Layer is used (format occurs earlier)
