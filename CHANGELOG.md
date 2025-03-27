@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.1.1] - 2025-02-27
+### Fixed
+- Fixed types definition path in package.json
+
 ## [5.1.0] - 2025-02-21
 ### Added
 - Now `log` includes field `functionName` with value of env var `AWS_LAMBDA_FUNCTION_NAME`
