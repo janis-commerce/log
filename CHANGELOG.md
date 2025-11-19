@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.1.5] - 2025-11-19
+### Fixed
+- Fixed dateCreated validation
+
 ## [5.1.4] - 2025-11-19
 ### Changed
 - Now when some logs are not sent due to Firehose errors, only those logs are retried
