@@ -40,11 +40,11 @@
     "test": "tests"
   },
   "dependencies": {
-    "@aws-sdk/client-firehose": "^3.632.0",
-    "@aws-sdk/client-sts": "^3.632.0",
-    "@janiscommerce/api-session": "^3.3.1",
+    "@aws-sdk/client-firehose": "^3.934.0",
+    "@aws-sdk/client-sts": "^3.934.0",
+    "@janiscommerce/api-session": "^3.4.0",
     "@janiscommerce/events": "^0.2.0",
-    "axios": "^1.12.2",
+    "axios": "^1.13.2",
     "fastest-validator": "^1.17.0",
     "lllog": "^1.1.2"
   }
