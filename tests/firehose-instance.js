@@ -161,6 +161,42 @@ describe('Firehose Instance', () => {
 				assertAssumeRole();
 			});
 
+			it('Should retry only failed records and end process successfully when the log can be sent', async () => {
+
+				Firehose.prototype.putRecordBatch
+					.onFirstCall()
+					.resolves({
+						FailedPutCount: 1,
+						RequestResponses: [
+							{ RecordId: 'some-record-id' },
+							{ RecordId: 'some-record-id-2', ErrorCode: 'ValidationException' }
+						]
+					})
+					.onSecondCall()
+					.resolves({ FailedPutCount: 0 });
+
+				const sampleLog2 = {
+					...sampleLog,
+					id: '915a2b90-d7b7-49a8-9ace-5ed384d52f9e'
+				};
+
+				await firehoseInstance.putRecords([sampleLog, sampleLog2]);
+
+				sinon.assert.callCount(Firehose.prototype.putRecordBatch, 2);
+
+				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(0), {
+					DeliveryStreamName: deliveryStreamName,
+					Records: [formatLogForFirehose(sampleLog), formatLogForFirehose(sampleLog2)]
+				});
+
+				sinon.assert.calledWithExactly(Firehose.prototype.putRecordBatch.getCall(1), {
+					DeliveryStreamName: deliveryStreamName,
+					Records: [formatLogForFirehose(sampleLog2)]
+				});
+
+				assertAssumeRole();
+			});
+
 			it('Should retry but end process when max retries reached', async () => {
 
 				Firehose.prototype.putRecordBatch.resolves({ FailedPutCount: 1 });
