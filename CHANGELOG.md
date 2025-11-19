@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.1.3] - 2025-11-19
 ### Changed
 - Updated `axios` and `@aws-sdk` versions
 - Added internal logging for debugging purposes
