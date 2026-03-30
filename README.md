@@ -24,10 +24,33 @@ npm install @janiscommerce/log
 - **`JANIS_TRACE_EXTENSION_ENABLED`**: If this variable is set, logs will be attempted to be buffered in the Janis Trace Extension server. If the server fails, direct call to Firehose is the fallback.
 - **`JANIS_TRACE_PRIVATE_FIELDS`**: In case it is necessary to exclude properties to be logged, they should be defined in this variable. In order to set multiple fields, set them separated by commas. For example: `JANIS_TRACE_PRIVATE_FIELDS=password,token`
 
+## Firehose delivery (direct path)
+
+When logs are sent to Firehose — i.e. `Log.add()` without the Trace extension batch (fewer than 100 logs in one call), `Log.sendToTrace()`, or fallback after the local extension fails — the package:
+
+- **Batches** records so each `PutRecordBatch` stays within AWS limits: **at most 500 records** and **total payload size** under Firehose’s per-request cap (the package uses a **safety margin** below 4 MiB).
+- Runs **up to five** `PutRecordBatch` calls **in parallel**, then the next wave, so load stays bounded on large payloads.
+- Uses a **1s** HTTP timeout on the Firehose client for each batch request.
+- On **partial** failures, **retries** failed records by **splitting** the batch and retrying (with a maximum depth); records that succeed in a response are counted as delivered.
+- If a single serialized record would exceed **1 MiB** (Firehose per-record limit), the payload is **replaced** with a small placeholder object (`truncated: true`) so the event is still sent.
+- If the Firehose client cannot be prepared (for example **STS `assumeRole`** failure), **no** `PutRecordBatch` calls are made and the whole batch is reported as failed.
+
+### Return value (Firehose path)
+
+`Log.add()` when it ends in Firehose (direct path, more than 100 logs in one call, extension disabled, or extension error fallback), `Log.sendToTrace()`, etc., resolve to:
+
+```js
+{ successCount: number, failedCount: number }
+```
+
+counts **after** validation, batching, retries, and splits. The local extension path (`JANIS_TRACE_EXTENSION_ENABLED` and fewer than 100 logs) still uses HTTP to the sidecar and does not return this object on success.
+
 ## API
 ### **`add(clientCode, logs)`**
-Parameters: `clientCode [String]`, `logs [Object] or [Object array]`
-Puts the received log or logs into the janis-trace-firehose or local server
+Parameters: `clientCode [String]`, `logs [Object] or [Object array]`  
+Returns: `Promise<void>` when logs go to the Trace extension locally; `Promise<{ successCount: number, failedCount: number }>` when they are sent to Firehose (see [Firehose delivery](#firehose-delivery-direct-path)).
+
+Puts the received log or logs into the janis-trace-firehose or local server.
 
 ### Log structure
 The `log [Object]` parameter have the following structure:
@@ -49,9 +72,10 @@ Parameters: `clientCode [String]`
 Create a new tracker to build an incremental log. It returns a [LogTracker](#log-tracker) instance.
 
 ### **`sendToTrace(logs)`**
-Parameters: `logs [Array<LogData>]
-Sends the received logs directly to a Firehose instance, skipping local server check.
-Logs have the same structure as in the `add()` method, but with the `client` property being required.
+Parameters: `logs [Array<LogData>]`  
+Returns: `Promise<{ successCount: number, failedCount: number }>`
+
+Sends the received logs directly to Firehose, skipping the local extension server. Logs use the same structure as in the `add()` method, with the `client` property required.
 
 ## Log Tracker
 

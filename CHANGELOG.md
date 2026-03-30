@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.2.0] - 2026-03-30
+### Added
+- `Log.add()` (Firehose path), `Log.sendToTrace()`, and Firehose fallback after local extension failure now resolve with `{ successCount, failedCount }` after batching, retries, and partial success handling (fallback previously did not return this object).
+
+### Changed
+- Firehose: build `PutRecordBatch` payloads using **record count** (max 500) and **total serialized size** under the service limit, with a margin below 4 MiB per batch.
+- Firehose: cap **concurrency** at five `PutRecordBatch` calls in flight per wave (instead of one wave with unbounded parallelism).
+- Firehose: HTTP client **timeout** increased to 1 second per batch request.
+- Firehose: on partial `FailedPutCount` / per-record errors, **retry** by splitting failed records and depth-limited attempts; successes in mixed responses increment `successCount`.
+- Logs larger than the **1 MiB** per-record limit are **truncated** to a placeholder payload (instead of being dropped) so a row is still emitted.
+
+### Fixed
+- Reduced Firehose **UnknownError** / **Records size exceeds 4 MB** failures caused by oversize batches or too many parallel requests.
+
 ## [5.1.5] - 2025-11-19
 ### Fixed
 - Fixed dateCreated validation

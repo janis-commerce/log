@@ -2,6 +2,9 @@
   "include": [
     "lib/"
   ],
+  "exclude": [
+    "lib/logging.js"
+  ],
   "extension": [
     ".js"
   ],
