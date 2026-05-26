@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.2.1] - 2026-05-26
+### Fixed
+- Fixed lambda timeouts when local trace extension is slow to respond on `/end`
+
 ## [5.2.0] - 2026-03-30
 ### Added
 - `Log.add()` (Firehose path), `Log.sendToTrace()`, and Firehose fallback after local extension failure now resolve with `{ successCount, failedCount }` after batching, retries, and partial success handling (fallback previously did not return this object).

@@ -350,7 +350,7 @@ describe('Log', () => {
 					timeout: 300
 				});
 
-				sinon.assert.calledWithExactly(axios.post, 'http://127.0.0.1:8585/end');
+				sinon.assert.calledWithExactly(axios.post, 'http://127.0.0.1:8585/end', undefined, { timeout: 1000 });
 
 				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
 			});
@@ -373,7 +373,7 @@ describe('Log', () => {
 					});
 				}
 
-				sinon.assert.calledWithExactly(axios.post.getCall(2), 'http://127.0.0.1:8585/end');
+				sinon.assert.calledWithExactly(axios.post.getCall(2), 'http://127.0.0.1:8585/end', undefined, { timeout: 1000 });
 
 				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
 			});
@@ -395,7 +395,7 @@ describe('Log', () => {
 					timeout: 300
 				});
 
-				sinon.assert.calledWithExactly(axios.post, 'http://127.0.0.1:8585/end');
+				sinon.assert.calledWithExactly(axios.post, 'http://127.0.0.1:8585/end', undefined, { timeout: 1000 });
 
 				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
 			});
