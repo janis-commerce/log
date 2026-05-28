@@ -5,12 +5,12 @@
   "main": "lib/log.js",
   "scripts": {
     "test": "export TEST_ENV=true; mocha --exit -R nyan --recursive tests/ --require tests/bootstrap",
-    "test-ci": "nyc --reporter=lcov --reporter=text-summary mocha --exit --recursive tests/",
     "watch-test": "export TEST_ENV=true; mocha --exit -R nyan -w --recursive tests/ --require tests/bootstrap",
     "coverage": "nyc npm test",
     "lint": "eslint lib/ tests/",
     "build-types": "tsc lib/log.js --declaration --allowJs --emitDeclarationOnly --outDir types",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "coverage-ci": "nyc --reporter=lcov --reporter=text-summary mocha --exit --recursive tests/"
   },
   "repository": {
     "type": "git",
