@@ -46,5 +46,8 @@
     "axios": "^1.14.0",
     "fastest-validator": "^1.19.1",
     "lllog": "^1.1.2"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
