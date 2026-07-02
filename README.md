@@ -69,7 +69,7 @@ The sentinel `client` value used to identify core logs (entities without a clien
 Log.CORE_CLIENT // '__core__'
 ```
 
-> ⚠️ **Placeholder value**: the final sentinel value is being confirmed in `#cloudops-dev`. Always reference `Log.CORE_CLIENT` instead of hardcoding `'__core__'`, since it's the single source of truth for the sentinel value.
+> Always reference `Log.CORE_CLIENT` instead of hardcoding the value, since it's the single source of truth for the sentinel.
 
 ### Log structure
 The `log [Object]` parameter have the following structure:

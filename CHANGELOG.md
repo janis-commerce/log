@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `Log.addCore()` and `Log.CORE_CLIENT` to send logs for entities without a client (core logs).
 
 ## [5.2.1] - 2026-05-26
 ### Fixed
