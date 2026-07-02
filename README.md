@@ -52,6 +52,25 @@ Returns: `Promise<void>` when logs go to the Trace extension locally; `Promise<{
 
 Puts the received log or logs into the janis-trace-firehose or local server.
 
+### **`addCore(logs)`**
+Parameters: `logs [Object] or [Object array]`  
+Returns: same as [`add()`](#addclientcode-logs).
+
+Wrapper around `add()` for **core logs**: logs for entities that don't belong to a client (e.g. Devops-managed entities), as opposed to client-scoped entities. It **forces** the `client` to the `CORE_CLIENT` sentinel on every log, **overriding any `client` field present on the logs** — unlike `add()`, where a `client` on the log object takes precedence. A core log has no client by definition, so it can't be routed to a real client.
+
+```js
+Log.addCore(logs); // every log is sent with client = Log.CORE_CLIENT, regardless of its own client field
+```
+
+### **`CORE_CLIENT`**
+The sentinel `client` value used to identify core logs (entities without a client). It's a string value that's not a valid `clientCode`, reused as the `client` field so core logs flow through the same Trace infrastructure (Firehose/Athena partitioning by `client`) as client-scoped logs.
+
+```js
+Log.CORE_CLIENT // '__core__'
+```
+
+> Always reference `Log.CORE_CLIENT` instead of hardcoding the value, since it's the single source of truth for the sentinel.
+
 ### Log structure
 The `log [Object]` parameter have the following structure:
 - **`id [String]`** (optional): The ID of the log in UUID V4 format. Default will be auto-generated.

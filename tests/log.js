@@ -1,5 +1,7 @@
 'use strict';
 
+const assert = require('assert');
+
 const sinon = require('sinon');
 
 const { default: axios } = require('axios');
@@ -399,6 +401,82 @@ describe('Log', () => {
 
 				sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
 			});
+		});
+	});
+
+	describe('CORE_CLIENT', () => {
+
+		it('Should expose the sentinel client value used for core logs', () => {
+			assert.strictEqual(Log.CORE_CLIENT, '__core__');
+		});
+	});
+
+	describe('addCore', () => {
+
+		it('Should call add() with the CORE_CLIENT sentinel value and the received logs', async () => {
+
+			sinon.spy(Log, 'add');
+
+			const { service, userCreated, ...minimalLog } = sampleLog;
+
+			const expectedLog = {
+				...minimalLog,
+				service: 'default-service' // from env in bootstrap.js
+			};
+
+			await Log.addCore(minimalLog);
+
+			sinon.assert.calledOnceWithExactly(Log.add, Log.CORE_CLIENT, { ...minimalLog, client: Log.CORE_CLIENT });
+
+			sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, Log.CORE_CLIENT)]);
+		});
+
+		it('Should force the CORE_CLIENT sentinel even when the received log carries its own client', async () => {
+
+			const { service, userCreated, ...minimalLog } = sampleLog;
+
+			const expectedLog = {
+				...minimalLog,
+				service: 'default-service' // from env in bootstrap.js
+			};
+
+			await Log.addCore({ ...minimalLog, client: 'some-real-client' });
+
+			// the log must reach Firehose as CORE_CLIENT, not 'some-real-client'
+			sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(expectedLog, Log.CORE_CLIENT)]);
+		});
+
+		it('Should send multiple core logs to Firehose with the CORE_CLIENT sentinel value', async () => {
+
+			const { service, userCreated, ...minimalLog } = sampleLog;
+
+			const expectedLog = {
+				...minimalLog,
+				service: 'default-service' // from env in bootstrap.js
+			};
+
+			await Log.addCore([minimalLog, minimalLog]);
+
+			sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [
+				formatLog(expectedLog, Log.CORE_CLIENT),
+				formatLog(expectedLog, Log.CORE_CLIENT)
+			]);
+		});
+
+		it('Should not send the core log to Firehose when the received log is invalid', async () => {
+
+			await Log.addCore({ ...sampleLog, entity: undefined });
+
+			sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
+		});
+
+		it('Should not send the core log to Firehose when the ENV is not valid', async () => {
+
+			process.env.JANIS_ENV = 'local';
+
+			await Log.addCore(sampleLog);
+
+			sinon.assert.notCalled(FirehoseInstance.prototype.putRecords);
 		});
 	});
 
