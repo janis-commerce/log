@@ -225,6 +225,25 @@ describe('Log', () => {
 				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(sampleLog, 'some-client', 'UpdateProductQueueConsumer')]);
 			});
 
+			it('Should send log to Firehose with functionName@requestId when function name and AWS_LAMBDA_REQUEST_ID env vars exist', async () => {
+
+				process.env.JANIS_FUNCTION_NAME = 'UpdateProduct';
+				process.env.AWS_LAMBDA_REQUEST_ID = 'test-request-id';
+
+				await Log.add('some-client', sampleLog);
+
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(sampleLog, 'some-client', 'UpdateProduct@test-request-id')]);
+			});
+
+			it('Should send log to Firehose with unknown@requestId when only AWS_LAMBDA_REQUEST_ID env var exists', async () => {
+
+				process.env.AWS_LAMBDA_REQUEST_ID = 'test-request-id';
+
+				await Log.add('some-client', sampleLog);
+
+				sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [formatLog(sampleLog, 'some-client', 'unknown@test-request-id')]);
+			});
+
 			it('Should send log to Firehose with apiRequestLogId in log when JANIS_API_REQUEST_LOG_ID env var exists', async () => {
 
 				const apiRequestLogId = '1dc1149c-8ebc-4405-adbf-30463448af1f';

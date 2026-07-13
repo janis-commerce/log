@@ -83,7 +83,7 @@ The `log [Object]` parameter have the following structure:
 - **`userCreated [String]`** (optional): The user that creates the log.
 - **`dateCreated [ISODate]`** (optional): The date when the log was created.
 - **`log [Object|Array]`** (optional): This property is a JSON that includes all the technical data about your log. If `Array` was received, will be transformed as an `Object`.
-  - **`log.functionName [String]`**: This field will be completed with ENV variable **`JANIS_FUNCTION_NAME`**. The variable is created in package [@janiscommerce/lambda](https://www.npmjs.com/package/@janiscommerce/lambda)
+  - **`log.functionName [String]`**: This field will be completed with ENV variable **`JANIS_FUNCTION_NAME`** (or **`AWS_LAMBDA_FUNCTION_NAME`** as fallback). The variable is created in package [@janiscommerce/lambda](https://www.npmjs.com/package/@janiscommerce/lambda). If the **`AWS_LAMBDA_REQUEST_ID`** env var is set (created by the Janis handler packages), the field is formatted as `functionName@requestId` (or `unknown@requestId` if no function name is available)
   - **`log.apiRequestLogId [String]`**: This field will be completed with ENV variable **`JANIS_API_REQUEST_LOG_ID`**. The variable is created in package [@janiscommerce/api](https://www.npmjs.com/package/@janiscommerce/api)
 
 ### **`createTracker(clientCode)`**
