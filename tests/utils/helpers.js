@@ -20,7 +20,7 @@ module.exports.formatLog = (rawLog, client, functionName, apiRequestLogId, sendT
 		id,
 		client,
 		service,
-		entity,
+		...entity && { entity }, // optional: a log can carry only relatedEntities
 		type,
 		...message && { message },
 		...entityId && { entityId }, // cause is optional

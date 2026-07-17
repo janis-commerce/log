@@ -75,7 +75,7 @@ describe('Log', () => {
 			});
 
 			const invalidLogs = [
-				{ log: { ...sampleLog, entity: undefined }, errorMessage: 'entity is not a string' },
+				{ log: { ...sampleLog, entity: undefined }, errorMessage: 'entity and relatedEntities are both missing' },
 				{ log: { ...sampleLog, entity: { not: 'a string' } }, errorMessage: 'entity is not a string' },
 				{ log: { ...sampleLog, entityId: ['not a number/string'] }, errorMessage: 'entityId is an array' },
 				{ log: { ...sampleLog, type: 1 }, errorMessage: 'type received as a number' },
@@ -317,6 +317,21 @@ describe('Log', () => {
 				});
 
 				assert.deepStrictEqual(getSentLog().entities, ['price', 'base-price']);
+			});
+
+			it('Should derive entities from relatedEntities alone when the log has no singular entity', async () => {
+
+				const { entityId, entity, ...entitylessLog } = sampleLog;
+
+				await Log.add('some-client', {
+					...entitylessLog,
+					relatedEntities: ['base-price:665e1aef3029f32339214b04', 'price:665e1aef3029f32339214b05']
+				});
+
+				const sentLog = getSentLog();
+
+				assert.deepStrictEqual(sentLog.entities, ['base-price', 'price']);
+				assert.strictEqual(sentLog.entity, undefined);
 			});
 		});
 
