@@ -279,6 +279,47 @@ describe('Log', () => {
 			});
 		});
 
+		context('When deriving the entities field', () => {
+
+			const getSentLog = () => {
+				const [sentLogs] = FirehoseInstance.prototype.putRecords.firstCall.args;
+				return sentLogs[0];
+			};
+
+			it('Should derive entities as [entity] for an individual log', async () => {
+
+				await Log.add('some-client', sampleLog);
+
+				assert.deepStrictEqual(getSentLog().entities, ['product']);
+			});
+
+			it('Should derive entities as [entity] for a grouped same-entity log', async () => {
+
+				const { entityId, ...groupedLog } = sampleLog;
+
+				await Log.add('some-client', {
+					...groupedLog,
+					entity: 'price',
+					relatedEntities: ['price:665e1aef3029f32339214b04', 'price:665e1aef3029f32339214b05']
+				});
+
+				assert.deepStrictEqual(getSentLog().entities, ['price']);
+			});
+
+			it('Should derive multi-entity entities with the log entity first, then the new prefixes', async () => {
+
+				const { entityId, ...groupedLog } = sampleLog;
+
+				await Log.add('some-client', {
+					...groupedLog,
+					entity: 'price',
+					relatedEntities: ['base-price:665e1aef3029f32339214b04', 'price:665e1aef3029f32339214b05']
+				});
+
+				assert.deepStrictEqual(getSentLog().entities, ['price', 'base-price']);
+			});
+		});
+
 		context('When local log batch is enabled', () => {
 
 			beforeEach(() => {
@@ -527,6 +568,7 @@ describe('Log', () => {
 				...minimalLog,
 				dateCreated: new Date(),
 				service: 'default-service',
+				entities: ['product'],
 				log: JSON.stringify(log),
 				client: 'some-client'
 			}]);
