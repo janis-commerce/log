@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `relatedEntities` field on logs (`entity:id` tokens) to relate one or more entities to a single log; the derived `entities` set is computed automatically in `preFormatLog`.
+
+### Changed
+- `entity` is now optional: a log is valid with either `entity` or `relatedEntities`.
 
 ## [5.4.0] - 2026-07-13
 ### Added
