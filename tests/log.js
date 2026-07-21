@@ -75,7 +75,7 @@ describe('Log', () => {
 			});
 
 			const invalidLogs = [
-				{ log: { ...sampleLog, entity: undefined }, errorMessage: 'entity is not a string' },
+				{ log: { ...sampleLog, entity: undefined }, errorMessage: 'entity and relatedEntities are both missing' },
 				{ log: { ...sampleLog, entity: { not: 'a string' } }, errorMessage: 'entity is not a string' },
 				{ log: { ...sampleLog, entityId: ['not a number/string'] }, errorMessage: 'entityId is an array' },
 				{ log: { ...sampleLog, type: 1 }, errorMessage: 'type received as a number' },
@@ -276,6 +276,62 @@ describe('Log', () => {
 						data: [sampleLog.log]
 					}
 				}, 'some-client')]);
+			});
+		});
+
+		context('When deriving the entities field', () => {
+
+			const getSentLog = () => {
+				const [sentLogs] = FirehoseInstance.prototype.putRecords.firstCall.args;
+				return sentLogs[0];
+			};
+
+			it('Should derive entities as [entity] for an individual log', async () => {
+
+				await Log.add('some-client', sampleLog);
+
+				assert.deepStrictEqual(getSentLog().entities, ['product']);
+			});
+
+			it('Should derive entities as [entity] for a grouped same-entity log', async () => {
+
+				const { entityId, ...groupedLog } = sampleLog;
+
+				await Log.add('some-client', {
+					...groupedLog,
+					entity: 'price',
+					relatedEntities: ['price:665e1aef3029f32339214b04', 'price:665e1aef3029f32339214b05']
+				});
+
+				assert.deepStrictEqual(getSentLog().entities, ['price']);
+			});
+
+			it('Should derive multi-entity entities with the log entity first, then the new prefixes', async () => {
+
+				const { entityId, ...groupedLog } = sampleLog;
+
+				await Log.add('some-client', {
+					...groupedLog,
+					entity: 'price',
+					relatedEntities: ['base-price:665e1aef3029f32339214b04', 'price:665e1aef3029f32339214b05']
+				});
+
+				assert.deepStrictEqual(getSentLog().entities, ['price', 'base-price']);
+			});
+
+			it('Should derive entities from relatedEntities alone when the log has no singular entity', async () => {
+
+				const { entityId, entity, ...entitylessLog } = sampleLog;
+
+				await Log.add('some-client', {
+					...entitylessLog,
+					relatedEntities: ['base-price:665e1aef3029f32339214b04', 'price:665e1aef3029f32339214b05']
+				});
+
+				const sentLog = getSentLog();
+
+				assert.deepStrictEqual(sentLog.entities, ['base-price', 'price']);
+				assert.strictEqual(sentLog.entity, undefined);
 			});
 		});
 
@@ -527,6 +583,7 @@ describe('Log', () => {
 				...minimalLog,
 				dateCreated: new Date(),
 				service: 'default-service',
+				entities: ['product'],
 				log: JSON.stringify(log),
 				client: 'some-client'
 			}]);
