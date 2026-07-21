@@ -78,8 +78,8 @@ The `log [Object]` parameter have the following structure:
 - **`service [String]`** (optional): The service name, if this field not exists, will be obtained from the ENV (**`JANIS_SERVICE_NAME`**)
 - **`entity [String]`** (optional): The name of the entity that is creating the log. Required unless `relatedEntities` is provided.
 - **`entityId [String]`** (optional): The ID of the entity that is creating the log.
-- **`relatedEntities [Array<String>]`** (optional): Tokens in `entity:id` format relating one or more entities to a single log (e.g. `['price:5ea1c8c53fdac68fb60eac9e', 'base-price:5ea1c8cd11f82560a364cbd4']`). A log must have either `entity` or `relatedEntities`.
-- **`entities [Array<String>]`** (auto-derived): The distinct set of entity names the log relates to (its own `entity` plus the entity prefixes of `relatedEntities`). Computed automatically in `preFormatLog`; you don't need to set it.
+- **`relatedEntities [Array<String>]`** (optional) _Since 5.5.0_: Tokens in `entity:id` format relating one or more entities to a single log (e.g. `['price:5ea1c8c53fdac68fb60eac9e', 'base-price:5ea1c8cd11f82560a364cbd4']`). A log must have either `entity` or `relatedEntities`.
+- **`entities [Array<String>]`** (auto-derived) _Since 5.5.0_: The distinct set of entity names the log relates to (its own `entity` plus the entity prefixes of `relatedEntities`). Computed automatically in `preFormatLog`; you don't need to set it.
 - **`type [String]`** (required): The log type.
 - **`message [String]`** (optional): A general message about the log.
 - **`userCreated [String]`** (optional): The user that creates the log.
