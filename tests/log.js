@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('assert');
+const queryString = require('querystring');
 
 const sinon = require('sinon');
 
@@ -675,6 +676,71 @@ describe('Log', () => {
 								undefined]
 							}
 						}]
+					}
+				}, 'some-client')
+			]);
+		});
+
+		it('Should hide the defined properties in null-prototype objects, they are plain', async () => {
+
+			sinon.stub(process, 'env')
+				.value({
+					...process.env,
+					JANIS_TRACE_PRIVATE_FIELDS: 'credentials, tokens, nickname'
+				});
+
+			// querystring.parse() returns a null-prototype object: it has no prototype but all its
+			// content lives in own keys, so it must be traversed and redacted like any plain object.
+			const queryParams = queryString.parse('user=test&credentials=secret');
+
+			await Log.add('some-client', {
+				...sampleLog,
+				log: { queryParams }
+			});
+
+			sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [
+				formatLog({
+					...sampleLog,
+					log: {
+						queryParams: {
+							user: 'test',
+							credentials: '***'
+						}
+					}
+				}, 'some-client')
+			]);
+		});
+
+		it('Should keep the dates with their value while hiding the defined properties', async () => {
+
+			sinon.stub(process, 'env')
+				.value({
+					...process.env,
+					JANIS_TRACE_PRIVATE_FIELDS: 'credentials, tokens, nickname'
+				});
+
+			const dateCreated = new Date('2026-08-13T10:00:00.000Z');
+
+			const logWithDates = {
+				dateCreated,
+				commerceDateCreated: dateCreated,
+				steps: [{ dateCreated }],
+				credentials: { user: 'test', password: 'pass' }
+			};
+
+			await Log.add('some-client', {
+				...sampleLog,
+				log: logWithDates
+			});
+
+			sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [
+				formatLog({
+					...sampleLog,
+					log: {
+						dateCreated,
+						commerceDateCreated: dateCreated,
+						steps: [{ dateCreated }],
+						credentials: '***'
 					}
 				}, 'some-client')
 			]);
