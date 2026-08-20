@@ -1,7 +1,6 @@
 'use strict';
 
 const assert = require('assert');
-const queryString = require('querystring');
 
 const sinon = require('sinon');
 
@@ -597,6 +596,18 @@ describe('Log', () => {
 
 	describe('Hide fields from Log', () => {
 
+		// Stands in for a Decimal128: bson is not a dependency of this package
+		class FakeDecimal {
+
+			constructor(value) {
+				this.bytes = Buffer.from(value);
+			}
+
+			toJSON() {
+				return { $numberDecimal: this.bytes.toString() };
+			}
+		}
+
 		it('Should not hide fields when no fields in env var', async () => {
 
 			sinon.stub(process, 'env')
@@ -689,23 +700,56 @@ describe('Log', () => {
 					JANIS_TRACE_PRIVATE_FIELDS: 'credentials, tokens, nickname'
 				});
 
-			// querystring.parse() returns a null-prototype object: it has no prototype but all its
-			// content lives in own keys, so it must be traversed and redacted like any plain object.
-			const queryParams = queryString.parse('user=test&credentials=secret');
+			const { groups: parsedAuth } = /^(?<user>[^:]+):(?<credentials>.+)$/.exec('test:secret');
+
+			assert.strictEqual(Object.getPrototypeOf(parsedAuth), null);
 
 			await Log.add('some-client', {
 				...sampleLog,
-				log: { queryParams }
+				log: { parsedAuth }
 			});
 
 			sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [
 				formatLog({
 					...sampleLog,
 					log: {
-						queryParams: {
+						parsedAuth: {
 							user: 'test',
 							credentials: '***'
 						}
+					}
+				}, 'some-client')
+			]);
+		});
+
+		it('Should keep the non-plain instances with own keys with their value while hiding the defined properties', async () => {
+
+			sinon.stub(process, 'env')
+				.value({
+					...process.env,
+					JANIS_TRACE_PRIVATE_FIELDS: 'credentials, tokens, nickname'
+				});
+
+			const total = new FakeDecimal('10.99');
+
+			const logWithDecimals = {
+				total,
+				items: [{ total }],
+				credentials: { user: 'test', password: 'pass' }
+			};
+
+			await Log.add('some-client', {
+				...sampleLog,
+				log: logWithDecimals
+			});
+
+			sinon.assert.calledOnceWithExactly(FirehoseInstance.prototype.putRecords, [
+				formatLog({
+					...sampleLog,
+					log: {
+						total,
+						items: [{ total }],
+						credentials: '***'
 					}
 				}, 'some-client')
 			]);
