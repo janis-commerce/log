@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.5.1] - 2026-08-24
+### Fixed
+- Private fields redaction no longer empties `Date` values and other non-plain object instances in logs
+
 ## [5.5.0] - 2026-07-21
 ### Added
 - `relatedEntities` field on logs (`entity:id` tokens) to relate one or more entities to a single log; the derived `entities` set is computed automatically in `preFormatLog`.
