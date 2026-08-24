@@ -24,6 +24,8 @@ npm install @janiscommerce/log
 - **`JANIS_TRACE_EXTENSION_ENABLED`**: If this variable is set, logs will be attempted to be buffered in the Janis Trace Extension server. If the server fails, direct call to Firehose is the fallback.
 - **`JANIS_TRACE_PRIVATE_FIELDS`**: In case it is necessary to exclude properties to be logged, they should be defined in this variable. In order to set multiple fields, set them separated by commas. For example: `JANIS_TRACE_PRIVATE_FIELDS=password,token`
 
+  The properties are redacted by key name at any depth, including inside arrays. Only plain objects and arrays are traversed: any other instance — a `Date`, an `ObjectId`, a `Decimal128` — is logged untouched, with its normal serialized representation. As a consequence, a private field placed **inside** one of those instances is not redacted.
+
 ## Firehose delivery (direct path)
 
 When logs are sent to Firehose — i.e. `Log.add()` without the Trace extension batch (fewer than 100 logs in one call), `Log.sendToTrace()`, or fallback after the local extension fails — the package:
